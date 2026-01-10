@@ -1,0 +1,24 @@
+data_file: inputs/input8_500_gumbel_high.txt
+chunk_size: 80000
+output_dir: fit_results_minimal
+
+# Example sbatch command to run this fit_info.yaml with SLURM:
+# sbatch --array=0 --ntasks=16  ./launch_fit.sh ./fit_info.yaml
+
+# If you want to run every copula for:
+# 4 vars (12 copulas): --array=0
+# 5 vars (480/20000 copulas): --array=0squ
+# 6 vars (23040/16/20000 copulas): --array=0
+# 7 vars (2580480/16/20000): --array=0:8
+# 8 vars (660602880/16/20000): --array=0:2064
+
+# Some examples:
+
+# If we want to run the 6 var vine in DelftBlue:
+# We know in DelftBlue the optimal is 4 jobs with 16 tasks each
+# So 23040/16/4=360 chunks per job
+
+# If we want to run the 7 var vine in DelftBlue:
+# We know in DelftBlue the optimal is 4 jobs with 16 tasks each
+# So 2580480/16/4=40320 chunks per job
+
