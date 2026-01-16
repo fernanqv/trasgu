@@ -24,9 +24,9 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("vine_config")
+logger.debug("Debug message")
 
-
-class VineConfig:
+class ChimeraVines:
     """
     Configuration for vine copula analysis from YAML.
     Loads YAML parameters as class attributes and provides
@@ -40,6 +40,7 @@ class VineConfig:
         Args:
             yaml_path: Path to the YAML configuration file.
         """
+        logger.debug(f"Initializing ChimeraVines with YAML file: {yaml_path}")
         self.yaml_path = Path(yaml_path)
 
         # Load YAML
@@ -50,6 +51,10 @@ class VineConfig:
         for key, value in config.items():
             if not key.startswith("#"):  # Ignore comments
                 setattr(self, key, value)
+
+        if hasattr(self, "debug") and self.debug:
+            logger.setLevel(logging.DEBUG)
+            logger.debug("Debug mode enabled via configuration")
 
         if not hasattr(self, "chimera_url"):
             fs = fsspec.filesystem("http")
@@ -76,6 +81,7 @@ class VineConfig:
             self.parallel_tasks = int(self.parallel_tasks)   
 
         if not hasattr(self, "controls_file"):
+            logger.debug("Using default controls")
             self.controls = pv.FitControlsVinecop(
                 family_set=pv.one_par,
                 selection_criterion="aic",
@@ -83,6 +89,7 @@ class VineConfig:
                 parametric_method="mle",
             )
         else:
+            logger.debug("Loading controls pickle")
             with open(self.controls_file, "rb") as f:
                 self.controls = pickle.load(f)
 
@@ -92,7 +99,7 @@ class VineConfig:
     def __repr__(self) -> str:
         """Human-readable representation of the configuration."""
         attrs = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
-        return f"VineConfig({attrs})"
+        return f"ChimeraVines({attrs})"
 
     def _fit_vinecop_chunk_internal(
         self,
@@ -133,7 +140,7 @@ class VineConfig:
         Returns:
             Numpy array of shape (end-start, n_vars, n_vars).
         """
-
+        logger.debug(f"Loading matrices from {start} to {end}")
         root = zarr.open_group(self.chimera_store, mode="r")
         matrices = root[f"matrices{self.n_vars}"]
         data = matrices[start:end, :, :]
@@ -150,6 +157,7 @@ class VineConfig:
             Numpy array of shape (1, n_vars, n_vars).
         """
         matrix = self._load_matrices_from_zarr(matrix_id, matrix_id + 1)
+        logger.debug(f"Loaded matrix {matrix_id}")
         return matrix
 
     def _get_data_from_file(self) -> np.ndarray:
@@ -159,6 +167,7 @@ class VineConfig:
         Returns:
             Numpy array with the data.
         """
+        logger.debug(f"Loading data from {self.data_file}")
         if not os.path.exists(self.data_file):
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
         return np.loadtxt(self.data_file)
@@ -172,6 +181,7 @@ class VineConfig:
         """
         root = zarr.open_group(self.chimera_store, mode="r")
         matrices = root[f"matrices{self.n_vars}"]
+        logger.debug(f"Total number of matrices: {matrices.shape[0]}")
         total_matrices = matrices.shape[0]
         return total_matrices
 
@@ -191,6 +201,7 @@ class VineConfig:
 
         total_matrices = self.get_number_of_chimera_matrices()
         n_chunks = (total_matrices + chunk_size - 1) // chunk_size
+        logger.debug(f"Total number of chunks: {n_chunks}")
         return n_chunks
 
     def fit_vinecop_chunk(
@@ -354,7 +365,7 @@ class VineConfig:
             chunk_size = self.chunk_size
 
         chunk_index = matrix_id // chunk_size
-        logger.info(f"Matrix ID {matrix_id} is in chunk {chunk_index}")
+        logger.debug(f"Matrix ID {matrix_id} is in chunk {chunk_index}")
         return chunk_index
 
     # MONITORING METHODS
@@ -531,7 +542,7 @@ class VineConfig:
 
 
 if __name__ == "__main__":
-    config = VineConfig("tests.yaml")
+    config = ChimeraVines("tests.yaml")
 
 
     # print(config._get_matrix_from_id(10))
@@ -543,7 +554,7 @@ if __name__ == "__main__":
     # Examples for doing the unittests    
 
     # Test 1: test has to take less than 1 minute.
-    #config.measure_fitting_time()
+    config.measure_fitting_time()
 
     # Test 2: n has to be equal to 660602880
     n = config.get_number_of_chimera_matrices()
@@ -557,9 +568,9 @@ if __name__ == "__main__":
     chunk_id = config.get_id_chunk_from_matrix_id(matrix_id=6000000)
     print(chunk_id)
 
-    # Test 4: Test that the second line of file fit_tests/fit_chunk_0001_00100.csv has this exact string "100,28,-10687.981736". 
+    # Test 5: Test that the second line of file fit_tests/fit_chunk_0001_00100.csv has this exact string "100,28,-10687.981736". 
     # Also: Obtain a variable with the time taken to run the command
-    #config.fit_vinecop_chunk_to_file(chunk_index=1)
+    config.fit_vinecop_chunk_to_file(chunk_index=1)
 
 
     # Test 6: tuple_range has to be (100,199)
@@ -571,10 +582,10 @@ if __name__ == "__main__":
     # config.fit_vinecop_chunk_to_file(chunk_index=0)
 
     # Monitor progress with different views
-    config.display_chunk_status(view="compact")  # Single-line summary
-    config.display_chunk_status(view="detailed")  # Table of chunks
-    config.display_chunk_status(view="stats")     # Detailed statistics
-    config.display_chunk_status(view="all")       # All views combined
+    # config.display_chunk_status(view="compact")  # Single-line summary
+    # config.display_chunk_status(view="detailed")  # Table of chunks
+    # config.display_chunk_status(view="stats")     # Detailed statistics
+    # config.display_chunk_status(view="all")       # All views combined
 
     # start_time = time.perf_counter()
     # config.fit_vinecop_chunk_parallel()
