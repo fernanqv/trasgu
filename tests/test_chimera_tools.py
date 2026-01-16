@@ -8,7 +8,7 @@ class TestChimeraVines(unittest.TestCase):
 
     def setUp(self):
         """Set up the test configuration."""
-        self.config_path = "tests_config.yaml"
+        self.config_path = "tests/tests_config.yaml"
         if not os.path.exists(self.config_path):
             self.fail(f"Configuration file {self.config_path} not found.")
         self.config = ChimeraVines(self.config_path)
