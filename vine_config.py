@@ -15,6 +15,15 @@ import os.path
 import time
 from concurrent.futures import ProcessPoolExecutor
 import pickle
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("vine_config")
 
 
 class VineConfig:
@@ -209,14 +218,14 @@ class VineConfig:
 
         """
         chunk_size = self.chunk_size
-        print(f"Fitting chunk {chunk_index} with size {chunk_size}")
+        logger.info(f"Fitting chunk {chunk_index} with size {chunk_size}")
 
         os.makedirs(self.output_dir, exist_ok=True)
 
         # Transformar datos en pseudo-observaciones
         first_vine = chunk_index * chunk_size
         data = pv.to_pseudo_obs(self.data)
-        print(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
+        logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
         matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
         results = self._fit_vinecop_chunk_internal(
             chunk_index, matrices, data, chunk_size
@@ -261,7 +270,7 @@ class VineConfig:
             fmt="%d,%d,%.6f",
             comments="",
         )
-        print(f"Results saved to {output_path}")
+        logger.info(f"Results saved to {output_path}")
 
     def fit_vinecop_chunk_parallel(self) -> Dict[int, Optional[BaseException]]:
         """Run multiple chunk fits in parallel and report failures."""
@@ -277,10 +286,10 @@ class VineConfig:
             try:
                 future.result()
                 results[chunk_id] = None
-                print(f"Chunk {chunk_id} completed successfully")
+                logger.info(f"Chunk {chunk_id} completed successfully")
             except Exception as exc:  # noqa: BLE001
                 results[chunk_id] = exc
-                print(f"Chunk {chunk_id} failed: {exc}")
+                logger.error(f"Chunk {chunk_id} failed: {exc}")
 
         return results
 
@@ -315,17 +324,17 @@ class VineConfig:
         chunk_size_short = 100
         first_vine = 0
         data = pv.to_pseudo_obs(self.data)
-        print(f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}")
+        logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}")
         matrices = self._load_matrices_from_zarr(
             first_vine, first_vine + chunk_size_short
         )
-        print(f"Starting fit for {chunk_size_short} vine copulas...")
+        logger.info(f"Starting fit for {chunk_size_short} vine copulas...")
         start_time = time.perf_counter()
         self._fit_vinecop_chunk_internal(0, matrices, data, chunk_size=chunk_size_short)
         elapsed_time = time.perf_counter() - start_time
 
         time_per_chunk = elapsed_time / chunk_size_short * self.chunk_size / 60
-        print(
+        logger.info(
             f"Estimated time for full chunk ({self.chunk_size}): {time_per_chunk:.2f} minutes"
         )
 
@@ -345,7 +354,7 @@ class VineConfig:
             chunk_size = self.chunk_size
 
         chunk_index = matrix_id // chunk_size
-        print(f"Matrix ID {matrix_id} is in chunk {chunk_index}")
+        logger.info(f"Matrix ID {matrix_id} is in chunk {chunk_index}")
         return chunk_index
 
     # MONITORING METHODS
@@ -433,11 +442,11 @@ class VineConfig:
             self._display_compact_view(summary)
         
         if view in ["detailed", "all"]:
-            print()  # Add spacing
+            logger.info("")  # Add spacing
             self._display_detailed_view(summary)
         
         if view in ["stats", "all"]:
-            print()  # Add spacing
+            logger.info("")  # Add spacing
             self._display_stats_view(summary)
 
     def _display_compact_view(self, summary: Dict[str, Any]) -> None:
@@ -452,12 +461,12 @@ class VineConfig:
         filled = int(bar_length * percent / 100)
         bar = "█" * filled + "░" * (bar_length - filled)
         
-        print("=" * 70)
-        print("CHUNK FITTING PROGRESS (COMPACT VIEW)")
-        print("=" * 70)
-        print(f"[{bar}] {percent:.1f}%")
-        print(f"Chunks: {completed} completed, {in_progress} in progress, {pending} pending")
-        print(f"Vines: {summary['total_vines_processed']:,} / {summary['total_vines']:,}")
+        logger.info("=" * 70)
+        logger.info("CHUNK FITTING PROGRESS (COMPACT VIEW)")
+        logger.info("=" * 70)
+        logger.info(f"[{bar}] {percent:.1f}%")
+        logger.info(f"Chunks: {completed} completed, {in_progress} in progress, {pending} pending")
+        logger.info(f"Vines: {summary['total_vines_processed']:,} / {summary['total_vines']:,}")
 
     def _display_detailed_view(self, summary: Dict[str, Any]) -> None:
         """Display detailed table view of chunk status."""
@@ -465,11 +474,11 @@ class VineConfig:
         total_chunks = summary["total_chunks"]
         total_vines = summary["total_vines"]
         
-        print("=" * 70)
-        print("CHUNK FITTING STATUS (DETAILED VIEW)")
-        print("=" * 70)
-        print(f"{'Chunk':>6} | {'Status':>12} | {'Vines Fitted':>12} | {'Progress':>10}")
-        print("-" * 70)
+        logger.info("=" * 70)
+        logger.info("CHUNK FITTING STATUS (DETAILED VIEW)")
+        logger.info("=" * 70)
+        logger.info(f"{'Chunk':>6} | {'Status':>12} | {'Vines Fitted':>12} | {'Progress':>10}")
+        logger.info("-" * 70)
         
         for chunk_idx in range(total_chunks):
             if chunk_idx in progress:
@@ -482,10 +491,10 @@ class VineConfig:
                     status = f"⏳ {vines_fitted}/{expected_vines}"
                 
                 progress_pct = (vines_fitted / expected_vines * 100) if expected_vines > 0 else 0
-                print(f"{chunk_idx:>6} | {status:>12} | {vines_fitted:>12} | {progress_pct:>9.1f}%")
+                logger.info(f"{chunk_idx:>6} | {status:>12} | {vines_fitted:>12} | {progress_pct:>9.1f}%")
             else:
                 expected_vines = min(self.chunk_size, total_vines - chunk_idx * self.chunk_size)
-                print(f"{chunk_idx:>6} | {'⏹ Pending':>12} | {'0':>12} | {'0.0%':>10}")
+                logger.info(f"{chunk_idx:>6} | {'⏹ Pending':>12} | {'0':>12} | {'0.0%':>10}")
 
     def _display_stats_view(self, summary: Dict[str, Any]) -> None:
         """Display detailed statistics view."""
@@ -497,28 +506,28 @@ class VineConfig:
         total_vines = summary["total_vines"]
         percent_complete = summary["percent_complete"]
         
-        print("=" * 70)
-        print("CHUNK FITTING STATISTICS")
-        print("=" * 70)
-        print(f"Total chunks:        {total_chunks:>10,}")
-        print(f"Completed chunks:    {chunks_completed:>10,} ({chunks_completed/total_chunks*100:>5.1f}%)")
-        print(f"In progress chunks:  {len(chunks_in_progress):>10} ({len(chunks_in_progress)/total_chunks*100:>5.1f}%)")
-        print(f"Pending chunks:      {chunks_pending:>10,} ({chunks_pending/total_chunks*100:>5.1f}%)")
-        print("-" * 70)
-        print(f"Total vines fitted:  {total_vines_processed:>10,}")
-        print(f"Total vines:         {total_vines:>10,}")
-        print(f"Overall progress:    {percent_complete:>10.2f}%")
-        print("-" * 70)
+        logger.info("=" * 70)
+        logger.info("CHUNK FITTING STATISTICS")
+        logger.info("=" * 70)
+        logger.info(f"Total chunks:        {total_chunks:>10,}")
+        logger.info(f"Completed chunks:    {chunks_completed:>10,} ({chunks_completed/total_chunks*100:>5.1f}%)")
+        logger.info(f"In progress chunks:  {len(chunks_in_progress):>10} ({len(chunks_in_progress)/total_chunks*100:>5.1f}%)")
+        logger.info(f"Pending chunks:      {chunks_pending:>10,} ({chunks_pending/total_chunks*100:>5.1f}%)")
+        logger.info("-" * 70)
+        logger.info(f"Total vines fitted:  {total_vines_processed:>10,}")
+        logger.info(f"Total vines:         {total_vines:>10,}")
+        logger.info(f"Overall progress:    {percent_complete:>10.2f}%")
+        logger.info("-" * 70)
         
         # Show chunks in progress details
         if chunks_in_progress:
-            print("\nChunks in progress:")
+            logger.info("\nChunks in progress:")
             for chunk_idx, fitted, expected in chunks_in_progress[:10]:  # Show top 10
                 progress_pct = (fitted / expected * 100) if expected > 0 else 0
-                print(f"  Chunk {chunk_idx:>6}: {fitted:>6}/{expected:<6} vines ({progress_pct:>5.1f}%)")
+                logger.info(f"  Chunk {chunk_idx:>6}: {fitted:>6}/{expected:<6} vines ({progress_pct:>5.1f}%)")
             
             if len(chunks_in_progress) > 10:
-                print(f"  ... and {len(chunks_in_progress) - 10} more chunks in progress")
+                logger.info(f"  ... and {len(chunks_in_progress) - 10} more chunks in progress")
 
 
 if __name__ == "__main__":
