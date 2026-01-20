@@ -324,19 +324,19 @@ class ChimeraVines:
         """Measure execution time for fitting a chunk of vine copulas.
 
         Args:
-            chunk_size: Number of matrices to fit (default: 1000)
+            chunk_size: Number of matrices to fit (default: 100)
 
         Returns:
            Time in minutes to fit a full chunk as per config.
         """
-        chunk_size_short = 10
+        chunk_size_short = 100
         first_vine = 0
         data = pv.to_pseudo_obs(self.data)
-        logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}")
+        logger.debug(f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}")
         matrices = self._load_matrices_from_zarr(
             first_vine, first_vine + chunk_size_short
         )
-        logger.info(f"Starting fit for {chunk_size_short} vine copulas...")
+        logger.debug(f"Starting fit for {chunk_size_short} vine copulas...")
         start_time = time.perf_counter()
         self._fit_vinecop_chunk_internal(matrices, data, base_vine_id=0)
         elapsed_time = time.perf_counter() - start_time
@@ -345,7 +345,7 @@ class ChimeraVines:
         if self.max_workers > 1:
             time_per_chunk = time_per_chunk / self.max_workers
         logger.info(
-            f"Estimated time for full chunk ({self.chunk_size}): {time_per_chunk:.2f} minutes"
+            f"Estimated time for full chunk ({self.chunk_size}) running with {self.max_workers} workers: {time_per_chunk:.2f} minutes"
         )
 
         return time_per_chunk

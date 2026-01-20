@@ -36,11 +36,14 @@ dev = [
 ]
 
 [project.scripts]
-chimera-fit-all = "run_fit_all_chunks:main"
-chimera-submit-slurm = "submit_all_chunks_slurm:main"
-chimera-combine = "combine_chunks_results:main"
-chimera-monitor = "monitor_chunks:main"
-chimera-fit-chunk = "fit_vinecop_chunk:main"
+chimera_fit_all = "scripts.chimera_fit_all:main"
+chimera_submit_slurm = "scripts.chimera_submit_slurm:main"
+chimera_combine = "scripts.chimera_combine:main"
+chimera_monitor = "scripts.chimera_monitor:main"
+chimera_fit_chunk = "scripts.chimera_fit_chunk:main"
+chimera_count_chunks = "scripts.chimera_count_chunks:main"
+chimera_time_fit = "scripts.chimera_time_fit:main"
 
 [tool.setuptools]
-py-modules = ["chimera_vines", "run_fit_all_chunks", "submit_all_chunks_slurm", "combine_chunks_results", "monitor_chunks", "fit_vinecop_chunk"]
+packages = ["scripts"]
+py-modules = ["chimera_vines"]
