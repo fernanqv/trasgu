@@ -13,7 +13,7 @@ from typing import Optional, Dict, Tuple, Any
 import pyvinecopulib as pv
 import os.path
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import pickle
 import logging
 
@@ -75,10 +75,12 @@ class ChimeraVines:
         if not hasattr(self, "chunk_size"):
             self.chunk_size = 30000
 
-        if not hasattr(self, "parallel_tasks"):
-            self.parallel_tasks = 1
+        if not hasattr(self, "max_workers"):
+            self.max_workers = 1
         else:
-            self.parallel_tasks = int(self.parallel_tasks)   
+            if self.max_workers <= 0:
+                raise ValueError("max_workers must be greater than 0")
+            self.max_workers = int(self.max_workers)
 
         if not hasattr(self, "controls_file"):
             logger.debug("Using default controls")
@@ -103,30 +105,38 @@ class ChimeraVines:
 
     def _fit_vinecop_chunk_internal(
         self,
-        chunk_index: int,
         matrices: np.ndarray,
         data: np.ndarray,
-        chunk_size: Optional[int] = None,
+        base_vine_id: int,
     ) -> np.ndarray:
+        """
+        Fit vine copulas for a chunk of matrices and calculate AIC.
+
+        Args:
+            matrices: Array of structure matrices to fit.
+            data: The data to fit the copulas to.
+            base_vine_id: The starting index for the matrices in this chunk.
+
+        Returns:
+            Numpy array of results, each row containing [vine_id, npars, aic].
+        """
+        logger.debug(
+            f"Fitting chunk of {len(matrices)} matrices starting at ID {base_vine_id}"
+        )
         results = []
 
-        first_vine = chunk_index * chunk_size
-
         for offset, matrix in enumerate(matrices):
-            vine_id = first_vine + offset
+            vine_id = base_vine_id + offset
 
             cop = pv.Vinecop.from_data(data, matrix=matrix, controls=self.controls)
             aic = cop.aic()
             results.append((int(vine_id), int(cop.npars), aic))
 
-            # MARCEL'S WAY: We have verified both ways give the same AIC
-            # matrixVC = pv.Vinecop.from_structure(matrix=chimera7[vine_id])
-            # selection = matrixVC.select(data=u, controls=self.controls)
-            # matrixVC.fit(u)
-            # aic2 = matrixVC.aic()
-
         results_array = np.array(results)
-        results_array[:, :2] = results_array[:, :2].astype(int)
+        if results_array.size > 0:
+            results_array[:, :2] = results_array[:, :2].astype(int)
+
+        logger.debug(f"Completed fitting chunk starting at ID {base_vine_id}")
         return results_array
 
     def _load_matrices_from_zarr(self, start: int, end: int) -> np.ndarray:
@@ -204,45 +214,6 @@ class ChimeraVines:
         logger.debug(f"Total number of chunks: {n_chunks}")
         return n_chunks
 
-    def fit_vinecop_chunk(
-        self,
-        chunk_index: int,
-    ) -> np.ndarray:
-        """Fit vine copulas for a contiguous chunk of vine structures.
-
-        This function loads a dataset from `data_file`, converts it to pseudo-
-        observations, and fits a vine copula for each matrix loaded from the
-        corresponding chimera zarr file. Results are written to a CSV in
-        `output_dir` and a list of tuples is returned.
-
-        Parameters
-        ----------
-        chunk_index : int
-            Zero-based index identifying which chunk of vines to process. The
-            first vine processed is `chunk_index * chunk_size`.
-
-        Returns
-        -------
-        np.ndarray
-            Array of shape (chunk_size, 3) with columns
-            (vine_id, n_parameters, aic).
-
-        """
-        chunk_size = self.chunk_size
-        logger.info(f"Fitting chunk {chunk_index} with size {chunk_size}")
-
-        os.makedirs(self.output_dir, exist_ok=True)
-
-        # Transformar datos en pseudo-observaciones
-        first_vine = chunk_index * chunk_size
-        data = pv.to_pseudo_obs(self.data)
-        logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
-        matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
-        results = self._fit_vinecop_chunk_internal(
-            chunk_index, matrices, data, chunk_size
-        )
-        return results
-
     def fit_vinecop_chunk_to_file(
         self,
         chunk_index: int,
@@ -267,9 +238,9 @@ class ChimeraVines:
             (vine_id, n_parameters, aic).
 
         """
-        results = self.fit_vinecop_chunk(chunk_index)
+        results = self.fit_vinecop_chunk_parallel(chunk_index)
 
-        # Guardar resultados en CSV
+        # Save results in CSV
         output_path = os.path.join(
             self.output_dir, f"fit_chunk_{chunk_index:04d}_{self.chunk_size:05d}.csv"
         )
@@ -282,27 +253,50 @@ class ChimeraVines:
             comments="",
         )
         logger.info(f"Results saved to {output_path}")
-
-    def fit_vinecop_chunk_parallel(self) -> Dict[int, Optional[BaseException]]:
-        """Run multiple chunk fits in parallel and report failures."""
-
-        with ProcessPoolExecutor(max_workers=8) as ex:
-            futures = {
-                chunk_id: ex.submit(self.fit_vinecop_chunk_to_file, chunk_id)
-                for chunk_id in np.arange(8)
-            }
-
-        results: Dict[int, Optional[BaseException]] = {}
-        for chunk_id, future in futures.items():
-            try:
-                future.result()
-                results[chunk_id] = None
-                logger.info(f"Chunk {chunk_id} completed successfully")
-            except Exception as exc:  # noqa: BLE001
-                results[chunk_id] = exc
-                logger.error(f"Chunk {chunk_id} failed: {exc}")
-
         return results
+
+    def fit_vinecop_chunk_parallel(
+        self, chunk_index: int
+    ) -> np.ndarray:
+        """Fit vine copulas for a contiguous chunk in parallel."""
+        chunk_size = self.chunk_size
+        logger.info(f"Parallel fitting chunk {chunk_index} with size {chunk_size} using {self.max_workers} workers")
+
+        os.makedirs(self.output_dir, exist_ok=True)
+
+        # Transform data to pseudo-observations
+        first_vine = chunk_index * chunk_size
+        data = pv.to_pseudo_obs(self.data)
+        
+        # Load all matrices for the chunk
+        logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
+        matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
+
+        # Split matrices into sub-chunks for each worker
+        n_workers = min(self.max_workers, len(matrices))    
+        indices = np.array_split(np.arange(len(matrices)), n_workers)
+        all_results = []
+        with ProcessPoolExecutor(max_workers=n_workers) as ex:
+            futures = []
+            for idx_set in indices:
+                logger.debug(f"Submitting chunk {idx_set}")
+                sub_matrices = matrices[idx_set]
+                base_id = first_vine + idx_set[0]
+                futures.append(ex.submit(self._fit_vinecop_chunk_internal, sub_matrices, data, base_id))
+
+            for future in as_completed(futures):
+                try:
+                    res = future.result()
+                    all_results.append(res)
+                except Exception as exc:  # noqa: BLE001
+                    logger.error(f"Worker failed: {exc}")
+                    raise
+
+        # Combine and sort results by vine_id
+        final_results = np.vstack(all_results)
+        final_results = final_results[final_results[:, 0].argsort()]
+        
+        return final_results
 
     def print_chunk_matrices_range(
         self, chunk_index: int, chunk_size: Optional[int] = None
@@ -341,10 +335,12 @@ class ChimeraVines:
         )
         logger.info(f"Starting fit for {chunk_size_short} vine copulas...")
         start_time = time.perf_counter()
-        self._fit_vinecop_chunk_internal(0, matrices, data, chunk_size=chunk_size_short)
+        self._fit_vinecop_chunk_internal(matrices, data, base_vine_id=0)
         elapsed_time = time.perf_counter() - start_time
 
         time_per_chunk = elapsed_time / chunk_size_short * self.chunk_size / 60
+        if self.max_workers > 1:
+            time_per_chunk = time_per_chunk / self.max_workers
         logger.info(
             f"Estimated time for full chunk ({self.chunk_size}): {time_per_chunk:.2f} minutes"
         )
@@ -368,181 +364,9 @@ class ChimeraVines:
         logger.debug(f"Matrix ID {matrix_id} is in chunk {chunk_index}")
         return chunk_index
 
-    # MONITORING METHODS
-    def monitor_fitting_progress(self) -> Dict[int, int]:
-        """
-        Monitor fitting progress by checking output CSV files.
-
-        Returns:
-            Dictionary mapping chunk indices to number of fitted vines.
-        """
-        progress = {}
-        for file in os.listdir(self.output_dir):
-            if file.startswith("fit_chunk_") and file.endswith(".csv"):
-                chunk_index = int(file[len("fit_chunk_") : -len(".csv")])
-                output_path = os.path.join(self.output_dir, file)
-                with open(output_path, "r") as f:
-                    n_lines = sum(1 for line in f) - 1  # Exclude header
-                progress[chunk_index] = n_lines
-        return progress
-
-    def get_chunk_status_summary(self) -> Dict[str, Any]:
-        """
-        Get comprehensive summary of chunk fitting progress.
-
-        Returns:
-            Dictionary containing:
-            - total_chunks: Total number of chunks to process
-            - chunks_completed: Number of chunks with results
-            - chunks_pending: Number of chunks not yet processed
-            - total_vines_processed: Total number of fitted vines
-            - total_vines: Total number of vines to fit
-            - percent_complete: Percentage of fitting completed
-            - chunks_in_progress: Chunks that are partially completed
-        """
-        progress = self.monitor_fitting_progress()
-        total_chunks = self.get_number_of_chunks()
-        total_vines = self.get_number_of_chimera_matrices()
-        
-        # Count completed and partial chunks
-        chunks_completed = 0
-        chunks_in_progress = []
-        total_vines_processed = 0
-        
-        for chunk_idx in range(total_chunks):
-            if chunk_idx in progress:
-                vines_in_chunk = progress[chunk_idx]
-                total_vines_processed += vines_in_chunk
-                
-                # Check if chunk is complete
-                expected_vines = min(self.chunk_size, total_vines - chunk_idx * self.chunk_size)
-                if vines_in_chunk >= expected_vines:
-                    chunks_completed += 1
-                else:
-                    chunks_in_progress.append((chunk_idx, vines_in_chunk, expected_vines))
-        
-        chunks_pending = total_chunks - chunks_completed - len(chunks_in_progress)
-        percent_complete = (total_vines_processed / total_vines * 100) if total_vines > 0 else 0
-        
-        return {
-            "total_chunks": total_chunks,
-            "chunks_completed": chunks_completed,
-            "chunks_pending": chunks_pending,
-            "chunks_in_progress": chunks_in_progress,
-            "total_vines_processed": total_vines_processed,
-            "total_vines": total_vines,
-            "percent_complete": percent_complete,
-        }
-
-    def display_chunk_status(self, view: str = "compact") -> None:
-        """
-        Display chunk fitting status with different visualization options.
-
-        Parameters:
-        -----------
-        view : str
-            Type of display:
-            - "compact": Single-line summary with progress bar
-            - "detailed": Table showing individual chunk status
-            - "stats": Detailed statistics and summary
-            - "all": All three views
-        """
-        summary = self.get_chunk_status_summary()
-        
-        if view in ["compact", "all"]:
-            self._display_compact_view(summary)
-        
-        if view in ["detailed", "all"]:
-            logger.info("")  # Add spacing
-            self._display_detailed_view(summary)
-        
-        if view in ["stats", "all"]:
-            logger.info("")  # Add spacing
-            self._display_stats_view(summary)
-
-    def _display_compact_view(self, summary: Dict[str, Any]) -> None:
-        """Display compact progress view with progress bar."""
-        percent = summary["percent_complete"]
-        completed = summary["chunks_completed"]
-        in_progress = len(summary["chunks_in_progress"])
-        pending = summary["chunks_pending"]
-        
-        # Create progress bar
-        bar_length = 40
-        filled = int(bar_length * percent / 100)
-        bar = "█" * filled + "░" * (bar_length - filled)
-        
-        logger.info("=" * 70)
-        logger.info("CHUNK FITTING PROGRESS (COMPACT VIEW)")
-        logger.info("=" * 70)
-        logger.info(f"[{bar}] {percent:.1f}%")
-        logger.info(f"Chunks: {completed} completed, {in_progress} in progress, {pending} pending")
-        logger.info(f"Vines: {summary['total_vines_processed']:,} / {summary['total_vines']:,}")
-
-    def _display_detailed_view(self, summary: Dict[str, Any]) -> None:
-        """Display detailed table view of chunk status."""
-        progress = self.monitor_fitting_progress()
-        total_chunks = summary["total_chunks"]
-        total_vines = summary["total_vines"]
-        
-        logger.info("=" * 70)
-        logger.info("CHUNK FITTING STATUS (DETAILED VIEW)")
-        logger.info("=" * 70)
-        logger.info(f"{'Chunk':>6} | {'Status':>12} | {'Vines Fitted':>12} | {'Progress':>10}")
-        logger.info("-" * 70)
-        
-        for chunk_idx in range(total_chunks):
-            if chunk_idx in progress:
-                vines_fitted = progress[chunk_idx]
-                expected_vines = min(self.chunk_size, total_vines - chunk_idx * self.chunk_size)
-                
-                if vines_fitted >= expected_vines:
-                    status = "✓ Completed"
-                else:
-                    status = f"⏳ {vines_fitted}/{expected_vines}"
-                
-                progress_pct = (vines_fitted / expected_vines * 100) if expected_vines > 0 else 0
-                logger.info(f"{chunk_idx:>6} | {status:>12} | {vines_fitted:>12} | {progress_pct:>9.1f}%")
-            else:
-                expected_vines = min(self.chunk_size, total_vines - chunk_idx * self.chunk_size)
-                logger.info(f"{chunk_idx:>6} | {'⏹ Pending':>12} | {'0':>12} | {'0.0%':>10}")
-
-    def _display_stats_view(self, summary: Dict[str, Any]) -> None:
-        """Display detailed statistics view."""
-        total_chunks = summary["total_chunks"]
-        chunks_completed = summary["chunks_completed"]
-        chunks_in_progress = summary["chunks_in_progress"]
-        chunks_pending = summary["chunks_pending"]
-        total_vines_processed = summary["total_vines_processed"]
-        total_vines = summary["total_vines"]
-        percent_complete = summary["percent_complete"]
-        
-        logger.info("=" * 70)
-        logger.info("CHUNK FITTING STATISTICS")
-        logger.info("=" * 70)
-        logger.info(f"Total chunks:        {total_chunks:>10,}")
-        logger.info(f"Completed chunks:    {chunks_completed:>10,} ({chunks_completed/total_chunks*100:>5.1f}%)")
-        logger.info(f"In progress chunks:  {len(chunks_in_progress):>10} ({len(chunks_in_progress)/total_chunks*100:>5.1f}%)")
-        logger.info(f"Pending chunks:      {chunks_pending:>10,} ({chunks_pending/total_chunks*100:>5.1f}%)")
-        logger.info("-" * 70)
-        logger.info(f"Total vines fitted:  {total_vines_processed:>10,}")
-        logger.info(f"Total vines:         {total_vines:>10,}")
-        logger.info(f"Overall progress:    {percent_complete:>10.2f}%")
-        logger.info("-" * 70)
-        
-        # Show chunks in progress details
-        if chunks_in_progress:
-            logger.info("\nChunks in progress:")
-            for chunk_idx, fitted, expected in chunks_in_progress[:10]:  # Show top 10
-                progress_pct = (fitted / expected * 100) if expected > 0 else 0
-                logger.info(f"  Chunk {chunk_idx:>6}: {fitted:>6}/{expected:<6} vines ({progress_pct:>5.1f}%)")
-            
-            if len(chunks_in_progress) > 10:
-                logger.info(f"  ... and {len(chunks_in_progress) - 10} more chunks in progress")
-
 
 if __name__ == "__main__":
-    config = ChimeraVines("tests.yaml")
+    config = ChimeraVines("tests/tests_config.yaml")
 
 
     # print(config._get_matrix_from_id(10))
@@ -554,7 +378,8 @@ if __name__ == "__main__":
     # Examples for doing the unittests    
 
     # Test 1: test has to take less than 1 minute.
-    config.measure_fitting_time()
+#    config.measure_fitting_time()
+
 
     # Test 2: n has to be equal to 660602880
     n = config.get_number_of_chimera_matrices()
@@ -571,6 +396,8 @@ if __name__ == "__main__":
     # Test 5: Test that the second line of file fit_tests/fit_chunk_0001_00100.csv has this exact string "100,28,-10687.981736". 
     # Also: Obtain a variable with the time taken to run the command
     config.fit_vinecop_chunk_to_file(chunk_index=1)
+    import sys
+    sys.exit()
 
 
     # Test 6: tuple_range has to be (100,199)
