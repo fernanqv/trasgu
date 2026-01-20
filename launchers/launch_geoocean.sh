@@ -11,7 +11,7 @@
 
 
 # Exmple sbatch command to run this fit_info.yaml with SLURM:
-# sbatch --array=4 --ntasks=16 launchers/launch_fit.sh fit_info.yaml
+# sbatch --array=4 --ntasks=16 launchers/launch_slurm.sh fit_info.yaml
 
 if [[ $# -ne 1 ]]; then
   echo "Usage: $0 fit_config.yaml" >&2
@@ -26,7 +26,7 @@ fi
 
 config_path=$(realpath "$config_path")
 
-python fit_vinecop_chunk.py "$SLURM_ARRAY_TASK_ID" --config $config_path
+chimera_fit_chunk --config $config_path $SLURM_ARRAY_TASK_ID
 
 
 

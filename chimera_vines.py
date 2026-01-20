@@ -504,11 +504,12 @@ class ChimeraVines:
 
         array_str = self._get_slurm_array_string(chunks_to_launch)
         
-        # Determine the launcher path relative to the repo root
-        launcher_path = "launchers/launch_slurm.sh"
+        if not hasattr(self, "slurm_launcher"):
+            raise ValueError("slurm_launcher parameter is required in YAML for SLURM submission")
+        
+        launcher_path = self.slurm_launcher
         if not os.path.exists(launcher_path):
-            # Try to find it relative to this file
-            launcher_path = os.path.join(os.path.dirname(__file__), "launchers", "launch_slurm.sh")
+            raise FileNotFoundError(f"SLURM launcher script not found: {launcher_path}")
 
         cmd = [
             "sbatch",
