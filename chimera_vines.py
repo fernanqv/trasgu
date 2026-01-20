@@ -14,8 +14,12 @@ import pyvinecopulib as pv
 import os.path
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import glob
+import re
 import pickle
 import logging
+import subprocess
+import itertools
 
 # Configure logging
 logging.basicConfig(
@@ -248,7 +252,6 @@ class ChimeraVines:
             output_path,
             results,
             delimiter=",",
-            header="vine_id,n_parameters,aic",
             fmt="%d,%d,%.6f",
             comments="",
         )
@@ -269,7 +272,7 @@ class ChimeraVines:
         data = pv.to_pseudo_obs(self.data)
         
         # Load all matrices for the chunk
-        logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
+        logger.debug(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
         matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
 
         # Split matrices into sub-chunks for each worker
@@ -326,7 +329,7 @@ class ChimeraVines:
         Returns:
            Time in minutes to fit a full chunk as per config.
         """
-        chunk_size_short = 100
+        chunk_size_short = 10
         first_vine = 0
         data = pv.to_pseudo_obs(self.data)
         logger.info(f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}")
@@ -364,9 +367,192 @@ class ChimeraVines:
         logger.debug(f"Matrix ID {matrix_id} is in chunk {chunk_index}")
         return chunk_index
 
+    def get_chunk_status(self) -> Dict[str, Any]:
+        """
+        Monitor the status of chunk processing.
+
+        Returns:
+            Dictionary containing:
+            - total_chunks: Total number of chunks to process.
+            - finished_chunks: List of indices of finished chunks.
+            - missing_chunks: List of indices of missing chunks.
+            - completion_percentage: Percentage of completed chunks.
+        """
+        total_chunks = self.get_number_of_chunks()
+        finished_chunks = []
+
+        # Find all files matching the pattern fit_chunk_NNNN_MMMMM.csv
+        pattern = os.path.join(self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv")
+        files = glob.glob(pattern)
+
+        for f in files:
+            match = re.search(r"fit_chunk_(\d+)_", os.path.basename(f))
+            if match:
+                finished_chunks.append(int(match.group(1)))
+
+        finished_chunks.sort()
+        missing_chunks = [i for i in range(total_chunks) if i not in finished_chunks]
+        
+        status = {
+            "total_chunks": total_chunks,
+            "finished_chunks_count": len(finished_chunks),
+            "finished_chunks": finished_chunks,
+            "missing_chunks": missing_chunks,
+            "completion_percentage": (len(finished_chunks) / total_chunks * 100) if total_chunks > 0 else 0
+        }
+        
+        logger.info(f"Status: {status['finished_chunks_count']}/{status['total_chunks']} chunks finished ({status['completion_percentage']:.2f}%)")
+        return status
+
+    def combine_chunks(self, output_filename: str = "final_results.csv", delete_chunks: bool = False) -> str:
+        """
+        Combine all chunk files into a single CSV with a header.
+
+        Args:
+            output_filename: Name of the merged output file.
+            delete_chunks: Whether to delete individual chunk files after merging.
+
+        Returns:
+            Path to the combined file.
+        """
+        status = self.get_chunk_status()
+        if status["missing_chunks"]:
+            logger.warning(f"Missing {len(status['missing_chunks'])} chunks. Merging will be incomplete.")
+
+        output_path = os.path.join(self.output_dir, output_filename)
+        
+        # Sort chunks to ensure correct order
+        pattern = os.path.join(self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv")
+        chunk_files = sorted(glob.glob(pattern))
+
+        if not chunk_files:
+            raise FileNotFoundError("No chunk files found to combine.")
+
+        logger.info(f"Combining {len(chunk_files)} chunks into {output_path}")
+
+        header = "vine_id,n_parameters,aic\n"
+        with open(output_path, "w") as outfile:
+            outfile.write(header)
+            for f in chunk_files:
+                with open(f, "r") as infile:
+                    outfile.write(infile.read())
+
+        if delete_chunks:
+            logger.info("Deleting individual chunk files")
+            for f in chunk_files:
+                os.remove(f)
+
+        logger.info(f"Combined file saved to {output_path}")
+        return output_path
+
+    def fit_all_chunks(self, skip_finished: bool = True, max_chunks: Optional[int] = None, combine_at_end: bool = False) -> None:
+        """
+        Fit all chunks in the data series.
+
+        Args:
+            skip_finished: If True, skips chunks that already have an output file.
+            max_chunks: Optional limit on the number of chunks to process.
+            combine_at_end: If True, calls combine_chunks() after finishing all fits.
+        """
+        total_chunks = self.get_number_of_chunks()
+        if max_chunks is not None:
+            total_chunks = min(total_chunks, max_chunks)
+            
+        logger.info(f"Starting fitting for {total_chunks} chunks")
+
+        status = self.get_chunk_status()
+        finished_chunks = set(status["finished_chunks"])
+
+        for i in range(total_chunks):
+            if skip_finished and i in finished_chunks:
+                logger.info(f"Skipping already finished chunk {i}")
+                continue
+
+            logger.info(f"Processing chunk {i+1}/{total_chunks}")
+            try:
+                self.fit_vinecop_chunk_to_file(i)
+            except Exception as e:
+                logger.error(f"Error processing chunk {i}: {e}")
+                continue
+
+        logger.info("Finished processing chunks")
+        
+        if combine_at_end:
+            logger.info("Combining results at the end")
+            self.combine_chunks()
+
+    def launch_all_chunks_slurm(self, skip_finished: bool = True, max_chunks: Optional[int] = None) -> None:
+        """
+        Launch all missing chunks as a SLURM array job.
+
+        Args:
+            skip_finished: If True, only launches chunks that don't have an output file.
+            max_chunks: Optional limit on the number of chunks to consider.
+        """
+        total_chunks = self.get_number_of_chunks()
+        if max_chunks is not None:
+            total_chunks = min(total_chunks, max_chunks)
+
+        status = self.get_chunk_status()
+        finished_chunks = set(status["finished_chunks"])
+        
+        chunks_to_launch = [i for i in range(total_chunks) if not (skip_finished and i in finished_chunks)]
+
+        if not chunks_to_launch:
+            logger.info("No chunks to launch.")
+            return
+
+        array_str = self._get_slurm_array_string(chunks_to_launch)
+        
+        # Determine the launcher path relative to the repo root
+        launcher_path = "launchers/launch_slurm.sh"
+        if not os.path.exists(launcher_path):
+            # Try to find it relative to this file
+            launcher_path = os.path.join(os.path.dirname(__file__), "launchers", "launch_slurm.sh")
+
+        cmd = [
+            "sbatch",
+            f"--array={array_str}",
+            f"--ntasks={self.max_workers}",
+            "--nodes=1",
+            launcher_path,
+            str(self.yaml_path)
+        ]
+
+        logger.info(f"Launching SLURM array job: {' '.join(cmd)}")
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            logger.info(f"SLURM output: {result.stdout.strip()}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to submit SLURM job: {e.stderr}")
+            raise
+
+    def _get_slurm_array_string(self, indices: list[int]) -> str:
+        """
+        Convert a list of indices into a SLURM array string (e.g., 0-5,7,10-12).
+        """
+        if not indices:
+            return ""
+        
+        indices = sorted(indices)
+        ranges = []
+        for _, g in itertools.groupby(enumerate(indices), lambda x: x[0] - x[1]):
+            group = list(g)
+            start = group[0][1]
+            end = group[-1][1]
+            if start == end:
+                ranges.append(str(start))
+            else:
+                ranges.append(f"{start}-{end}")
+        
+        return ",".join(ranges)
 
 if __name__ == "__main__":
-    config = ChimeraVines("tests/tests_config.yaml")
+    config = ChimeraVines("yaml_examples/geoocean.yaml")
+    config.launch_all_chunks_slurm(skip_finished=True)
+    
+    #config.fit_vinecop_chunk_to_file(chunk_index=1)
+    
 
 
     # print(config._get_matrix_from_id(10))
@@ -381,38 +567,28 @@ if __name__ == "__main__":
 #    config.measure_fitting_time()
 
 
-    # Test 2: n has to be equal to 660602880
-    n = config.get_number_of_chimera_matrices()
-    print(n)
+    # # Test 2: n has to be equal to 660602880
+    # n = config.get_number_of_chimera_matrices()
+    # print(n)
 
-    # Test 3:  n_chunks has to be equal to 6606029
-    n_chunks = config.get_number_of_chunks()
-    print(n_chunks)
+    # # Test 3:  n_chunks has to be equal to 6606029
+    # n_chunks = config.get_number_of_chunks()
+    # print(n_chunks)
 
-    # Test 4: chunk_id has to be equal to 60000
-    chunk_id = config.get_id_chunk_from_matrix_id(matrix_id=6000000)
-    print(chunk_id)
+    # # Test 4: chunk_id has to be equal to 60000
+    # chunk_id = config.get_id_chunk_from_matrix_id(matrix_id=6000000)
+    # print(chunk_id)
 
     # Test 5: Test that the second line of file fit_tests/fit_chunk_0001_00100.csv has this exact string "100,28,-10687.981736". 
     # Also: Obtain a variable with the time taken to run the command
-    config.fit_vinecop_chunk_to_file(chunk_index=1)
-    import sys
-    sys.exit()
+#    config.fit_vinecop_chunk_to_file(chunk_index=1)
+
 
 
     # Test 6: tuple_range has to be (100,199)
     tuple_range= config.print_chunk_matrices_range(1)
     
 
-
-    # print(config.fit_vinecop_chunk(chunk_index=0))
-    # config.fit_vinecop_chunk_to_file(chunk_index=0)
-
-    # Monitor progress with different views
-    # config.display_chunk_status(view="compact")  # Single-line summary
-    # config.display_chunk_status(view="detailed")  # Table of chunks
-    # config.display_chunk_status(view="stats")     # Detailed statistics
-    # config.display_chunk_status(view="all")       # All views combined
 
     # start_time = time.perf_counter()
     # config.fit_vinecop_chunk_parallel()
