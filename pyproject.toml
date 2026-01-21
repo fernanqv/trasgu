@@ -35,5 +35,16 @@ dev = [
   "black>=24.0",
 ]
 
+[project.scripts]
+chimera_fit_all = "scripts.chimera_fit_all:main"
+chimera_submit_slurm = "scripts.chimera_submit_slurm:main"
+chimera_combine = "scripts.chimera_combine:main"
+chimera_monitor = "scripts.chimera_monitor:main"
+chimera_fit_chunk = "scripts.chimera_fit_chunk:main"
+chimera_count_chunks = "scripts.chimera_count_chunks:main"
+chimera_time_fit = "scripts.chimera_time_fit:main"
+chimera_get_matrix = "scripts.chimera_get_matrix:main"
+
 [tool.setuptools]
+packages = ["scripts"]
 py-modules = ["chimera_vines"]

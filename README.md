@@ -1,259 +1,193 @@
-# Usage Guide: vine_config.py
+# Chimera Vines
 
-## What is vine_config.py?
+`chimera_vines` is a high-performance toolkit for fitting **Vine Copulas** using structured matrices from the **Chimera** project. It is designed to handle massive quantities of vine structures by distributing the workload into manageable "chunks," supporting both local multi-core execution and high-performance computing (HPC) clusters via SLURM.
 
-`vine_config.py` is a tool for fitting vine copulas using predefined structures from Chimera and input data. It allows processing large quantities of vine structures by dividing the work into "chunks" (fragments).
+---
 
-## Initial Configuration
+## 🚀 Key Features
 
-### 1. Create a YAML configuration file
+-   **High Performance**: Leverages `pyvinecopulib` for efficient C++-backed copula fitting.
+-   **Structured Exploration**: Specifically designed to work with Chimera Zarr structures.
+-   **Scalable**: Efficiently splits millions of vine structures into chunks for parallel processing.
+-   **HPC Ready**: Built-in support for SLURM array jobs with customizable launcher templates.
+-   **CLI-First**: Comprehensive suite of command-line tools for a streamlined workflow.
 
-Create a YAML file (e.g., `my_config.yaml`) with the following parameters:
+---
 
+## 🛠 Installation
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/geoocean/chimera_vines.git
+    cd chimera_vines
+    ```
+
+2.  Install in editable mode:
+    ```bash
+    pip install -e .
+    ```
+
+---
+
+## 🧩 Chunk-based Processing
+
+To handle the millions of potential vine structures efficiently, `chimera_vines` uses a **chunk-based processing** strategy. Instead of loading and fitting every structure at once, the work is divided into smaller groups called "chunks."
+
+### How it works:
+1.  **Segmentation**: The total number of vine structures (e.g., 600M+) is divided by your defined `chunk_size` (e.g., 20,000).
+2.  **Parallelization**:
+    -   **Local**: Within a single chunk, fitting is distributed across `max_workers` CPU cores.
+    -   **HPC (SLURM)**: Each chunk is submitted as an independent task in a SLURM job array, allowing thousands of chunks to be processed simultaneously across a cluster.
+3.  **Persistence**: Each chunk saves its results to a unique CSV file (`fit_chunk_NNNN_MMMMM.csv`). This prevents data loss if a long-running task is interrupted.
+4.  **Aggregation**: Once all chunks are finished, they are combined into a single `final_results.csv` for analysis.
+
+This approach ensures **low memory footprint**, **fault tolerance**, and **massive scalability**.
+
+---
+
+## ⚙️ Configuration (YAML)
+
+All tools in this toolkit rely on a YAML configuration file. Below are the available parameters:
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `data_file` | String | **Yes** | Path to the `.txt` numerical data matrix (observations in rows, variables in columns). |
+| `chunk_size` | Integer | **Yes** | Number of vine copulas to process per chunk (e.g., 20,000). |
+| `output_dir` | String | **Yes** | Directory where CSV results will be saved. |
+| `slurm_launcher` | String | **Yes*** | Path to your SLURM bash script template. *Required only for SLURM tools.* |
+| `max_workers` | Integer | No | Number of CPU cores to use for local processing (Default: 1). |
+| `controls_file` | String | No | Path to a pickled `pyvinecopulib.FitControlsVinecop` object. |
+| `chimera_url` | String | No | Local path or URL to the Chimera Zarr database. |
+
+### Example `config.yaml`
 ```yaml
-data_file: inputs/input7_500_gauss_high.txt  # Path to the input data file
-chunk_size: 27000                             # Number of vines per chunk
-output_dir: fit_results                       # Directory where results will be saved
-```
-
-**Optional parameters:**
-- `chimera_url`: URL of the Chimera Zarr file (default: `https://geoocean.sci.unican.es/chimera/chimera.zarr`)
-
-### Understanding the YAML Configuration File
-
-The YAML configuration file is a text file that stores all the settings required to run `vine_config.py`. Here's a detailed explanation of each parameter:
-
-**Required parameters:**
-
-- **`data_file`**: Path to your input data file (relative or absolute)
-  - Must be a `.txt` file containing a numerical matrix
-  - Example: `inputs/input7_500_gauss_high.txt`
-
-- **`chunk_size`**: Number of vine copulas to process in each chunk
-  - Larger values process more vines per chunk but require more memory
-  - Recommended range: 100-27000 depending on available RAM
-  - Start with 100 for testing and increase based on your hardware capacity
-
-- **`output_dir`**: Directory where the CSV results will be saved
-  - Will be created if it doesn't exist
-  - Example: `fit_results`
-
-**Optional parameters:**
-
-- **`chimera_url`**: URL or path to the Chimera Zarr database
-  - Default: `https://geoocean.sci.unican.es/chimera/chimera.zarr`
-  - Use this to override the default Chimera source if needed
-
-- **`controls_file`**: Path to a pickle file containing custom `FitControlsVinecop` settings
-  - If not provided, default controls are used with: family_set=`pv.one_par`, selection_criterion=`aic`, parametric_method=`mle`
-  - Use this to apply custom fitting parameters (e.g., different family sets, selection criteria, or estimation methods)
-  - Example: `controls_file: custom_controls.pkl`
-  - To create a custom controls file, use pyvinecopulib to configure and pickle the FitControlsVinecop object
-
-**Example configuration files:**
-
-Simple configuration for testing:
-```yaml
-data_file: inputs/input7_500_gauss_high.txt
-chunk_size: 100
-output_dir: test_results
-```
-
-Production configuration with custom Chimera source:
-```yaml
-data_file: inputs/input7_500_gauss_high.txt
-chunk_size: 27000
+data_file: examples/inputs/input6_500_gumbel_high.txt
+chunk_size: 2000
 output_dir: fit_results
-chimera_url: https://geoocean.sci.unican.es/chimera/chimera.zarr
+slurm_launcher: examples/launchers/launch_geoocean.sh
+max_workers: 4
+controls_file: examples/controls/controls.pkl
 ```
 
-Advanced configuration with custom fitting controls:
-```yaml
-data_file: inputs/input7_500_gauss_high.txt
-chunk_size: 27000
-output_dir: fit_results
-controls_file: custom_controls.pkl
+---
+
+## 🧰 CLI Toolkit
+
+The package provides several command-line entry points:
+
+### 1. `chimera_time_fit`
+Estimate how long it will take to process your data.
+```bash
+[geocean02 chimera_vines]$ chimera_time_fit examples/run_config/minimal.yaml 
+2026-01-20 19:02:58 - vine_config - INFO - Estimated time for full chunk (1000) running with 1 workers: 1.64 minutes
+```
+### 2. `chimera_count_chunks`
+Return the number of chunks for the desired configuration
+
+```bash
+[geocean02 chimera_vines]$ chimera_count_chunks examples/run_config/minimal.yaml 
+24
 ```
 
-### 2. Prepare data file
-
-Your data file should be a `.txt` with a matrix where:
-- Each row = an observation
-- Each column = a variable
-- Values separated by spaces or tabs
-
-Example: `inputs/input7_500_gauss_high.txt` with 7 variables and 500 observations
-
-## Basic Usage
-
-### Import and load configuration
-
-```python
-from vine_config import ChimeraVines
-
-# Load configuration from YAML
-config = ChimeraVines("my_config.yaml")
+### 3. `chimera_submit_slurm`
+Submit missing chunks as a SLURM array job to your cluster.
+```bash
+valvanuz@login01:> chimera_submit_slurm examples/run_config/altamira.yaml 
+2026-01-20 18:49:41 - vine_config - INFO - Status: 0/130 chunks finished (0.00%)
+2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 examples/launchers/launch_altamira.sh examples/run_config/altamira.yaml
+2026-01-20 18:49:41 - vine_config - INFO - SLURM output: Submitted batch job 699021
 ```
 
-### Main Methods
+### 4. `chimera_monitor`
+Check the progress and completion percentage of your fitting task.
+```bash
+valvanuz@login01:> chimera_monitor examples/run_config/altamira.yaml 
+2026-01-20 19:07:16 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 
-#### 1. **Estimate processing time**
-Before processing all chunks, estimate how long it will take:
-
-```python
-estimated_time = config.measure_fitting_time()
-# Prints: "Estimated time for full chunk (27000): X.XX minutes"
+--- Processing Status ---
+Total Chunks:   130
+Finished:       130
+Completion:     100.00%
+All chunks finished!
+-------------------------
 ```
 
-This method fits 100 test vines and projects the time for a full chunk.
-
-#### 2. **Fit a chunk and save results**
-Process a specific chunk and save the results to CSV:
-
-```python
-config.fit_vinecop_chunk_to_file(chunk_index=0)
-# Saves: fit_results/fit_chunk_0000_27000.csv
-```
-
-The CSV file contains:
-- `vine_id`: Vine identifier
-- `n_parameters`: Number of parameters of the fitted model
-- `aic`: Akaike Information Criterion
-
-#### 3. **Get information about chunks**
-
-```python
-# Total number of matrices available in Chimera
-total_matrices = config.get_number_of_chimera_matrices()
-
-# Number of chunks needed
-n_chunks = config.get_number_of_chunks()
-
-# Which chunk contains a specific matrix?
-chunk_id = config.get_id_chunk_from_matrix_id(15000)
-```
-
-#### 4. **Monitor progress**
-Check which chunks have already been processed:
-
-```python
-progress = config.monitor_fitting_progress()
-# Returns: {0: 27000, 1: 27000, 2: 15000, ...}
-# Where the key is the chunk_index and the value is the number of vines processed
-```
-
-#### 5. **Access data and matrices**
-
-```python
-# Load input data
-data = config.get_data_from_file()
-
-# Load a specific matrix from Chimera
-matrix = config.get_matrix_from_id(100)
-
-# Load a range of matrices
-matrices = config.load_matrices_from_zarr(start=0, end=100)
-```
-
-## Recommended Workflow
-
-### Step 1: Minimal configuration for testing
-Create `test.yaml`:
-```yaml
-data_file: inputs/input7_500_gauss_high.txt
-chunk_size: 100
-output_dir: test_results
-```
-
-### Step 2: Estimate time
-```python
-config = ChimeraVines("test.yaml")
-config.measure_fitting_time()
-```
-
-### Step 3: Process a test chunk
-```python
-config.fit_vinecop_chunk_to_file(chunk_index=0)
-```
-
-### Step 4: Adjust chunk_size and scale
-Based on the estimated time, adjust `chunk_size` in your YAML for production:
-```yaml
-chunk_size: 27000  # Optimal size based on your resources
-```
-
-### Step 5: Process all chunks
-```python
-config = ChimeraVines("production.yaml")
-n_chunks = config.get_number_of_chunks()
-
-for chunk_id in range(n_chunks):
-    config.fit_vinecop_chunk_to_file(chunk_id)
-    print(f"Completed chunk {chunk_id}/{n_chunks}")
-```
-
-## Parallel Processing (experimental)
-
-The `fit_vinecop_chunk_parallel()` method is available but requires adjustments according to your needs:
-
-```python
-config.fit_vinecop_chunk_parallel()
-```
-
-Note: This method currently processes 8 chunks in parallel with 8 workers. Customize based on your hardware.
-
-## Output file structure
-
-Results are saved in CSV format:
-```
-fit_results/
-├── fit_chunk_0000_27000.csv
-├── fit_chunk_0001_27000.csv
-├── fit_chunk_0002_27000.csv
-└── ...
-```
-
-CSV format:
-```
+### 4. `chimera_combine`
+Finalize the task by merging all chunk CSVs into a single master file.
+```bash
+valvanuz@login01:> chimera_combine examples/run_config/altamira.yaml 
+2026-01-20 19:08:09 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
+2026-01-20 19:08:09 - vine_config - INFO - Combining 130 chunks into fit_results_altamira/final_results.csv
+2026-01-20 19:08:10 - vine_config - INFO - Combined file saved to fit_results_altamira/final_results.csv
+Successfully combined chunks into: fit_results_altamira/final_results.csv
+valvanuz@login01:> head fit_results_altamira/final_results.csv 
 vine_id,n_parameters,aic
-0,21,1234.567890
-1,18,1156.234567
-...
+0,21,-9304.195685
+1,21,-9323.297687
+2,21,-9269.211495
+3,21,-9145.024796
+4,21,-9168.838010
+5,21,-9280.147407
+6,21,-9230.251631
+7,21,-9029.644844
+8,21,-8808.064343
 ```
 
-## Advanced Configuration
+### 5. `chimera_fit_chunk`
+Manually fit a specific chunk. Used internally by SLURM but available for debugging.
+```bash
+chimera_fit_chunk config.yaml 0  # Process chunk index 0
+```
 
-Vine copula fitting uses these default parameters:
-- `family_set`: Families with one parameter (`pv.one_par`)
-- `selection_criterion`: AIC (Akaike Information Criterion)
-- `parametric_method`: MLE (Maximum Likelihood Estimation)
-
-To modify these parameters, edit the `_fit_vinecop_chunk_internal()` method in `vine_config.py`.
-
-## Troubleshooting
-
-- **Error "Data file not found"**: Verify that the path in `data_file` is correct
-- **Excessive time**: Reduce `chunk_size` for smaller chunks
-- **Insufficient memory**: Reduce `chunk_size` or process fewer vines per chunk
+### 6. `chimera_fit_all`
+Fit all chunks sequentially on your local machine.
+```bash
+chimera_fit_all config.yaml
+```
 
 ---
 
-## Summary of available methods
+## 🔄 Recommended Workflow
 
-| Method | Description |
-|--------|-------------|
-| `measure_fitting_time()` | Estimates the processing time for a full chunk |
-| `fit_vinecop_chunk_to_file(chunk_index)` | Fits a chunk and saves results to CSV |
-| `fit_vinecop_chunk(chunk_index)` | Fits a chunk and returns results (without saving) |
-| `get_number_of_chimera_matrices()` | Gets the total number of available matrices |
-| `get_number_of_chunks()` | Calculates the number of chunks needed |
-| `load_matrices_from_zarr(start, end)` | Loads a range of matrices from Chimera |
-| `get_matrix_from_id(matrix_id)` | Gets a specific matrix by ID |
-| `get_data_from_file()` | Loads the input data |
-| `get_id_chunk_from_matrix_id(matrix_id)` | Gets the chunk containing a matrix |
-| `monitor_fitting_progress()` | Shows the progress of processed chunks |
-| `fit_vinecop_chunk_parallel()` | Processes multiple chunks in parallel (experimental) |
+1.  **Preparation**: Create your `config.yaml` and prepare your data file.
+2.  **Estimation**: Run `chimera_time_fit` to determine the optimal `chunk_size` and expected duration.
+3.  **Submission**: If using a cluster, run `chimera_submit_slurm`.
+4.  **Monitoring**: Use `chimera_monitor` periodically to see how many chunks are finished.
+5.  **Aggregation**: Once 100% complete, run `chimera_combine` to generate your final result file.
 
 ---
 
-Do you need help with any specific aspect of using `vine_config.py`?
+## 📂 SLURM Integration
+
+To use SLURM, you must provide a launcher script (defined in your YAML as `slurm_launcher`). This script acts as a template for the array job.
+
+**Example `launch_geoocean.sh`:**
+```bash
+#!/bin/bash
+#SBATCH --job-name="chimera_vines"
+#SBATCH --partition=priority
+#SBATCH --nodes=1
+
+# The toolkit will automatically append the chunk index as the last argument
+chimera_fit_chunk --config $1 $SLURM_ARRAY_TASK_ID
+```
+
+---
+
+## 🧪 Advanced: Custom Fitting Controls
+
+If you need specific fitting logic (e.g., custom family sets or selection criteria), create a Python script to pickle a `FitControlsVinecop` object:
+
+```python
+import pyvinecopulib as pv
+import pickle
+
+controls = pv.FitControlsVinecop(
+    family_set=[pv.BicopFamily.gaussian, pv.BicopFamily.t],
+    selection_criterion="bic"
+)
+
+with open("my_controls.pkl", "wb") as f:
+    pickle.dump(controls, f)
+```
+Then reference it in your YAML: `controls_file: examples/controls/my_controls.pkl`.

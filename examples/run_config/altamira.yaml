@@ -1,0 +1,6 @@
+data_file: inputs/input7_500_gumbel_high.txt
+chunk_size: 20000
+output_dir: fit_results_altamira
+slurm_launcher: launchers/launch_altamira.sh
+max_workers: 4  
+debug: true

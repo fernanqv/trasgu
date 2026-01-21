@@ -1,5 +1,5 @@
-data_file: inputs/input8_500_gumbel_high.txt
-chunk_size: 80000
+data_file: inputs/input6_500_gumbel_high.txt
+chunk_size: 1000
 output_dir: fit_results_minimal
 
 # Example sbatch command to run this fit_info.yaml with SLURM:

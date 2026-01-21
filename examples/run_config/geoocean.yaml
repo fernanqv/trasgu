@@ -1,0 +1,15 @@
+data_file: inputs/input6_500_gumbel_high.txt
+chunk_size: 2000
+output_dir: fit_results_geoocean
+chimera_url: /lustre/geocean/WORK/valvanuz/chimera.zarr
+controls_file: controls/controls.pkl
+max_workers: 32
+slurm_launcher: launchers/launch_slurm.sh
+
+# 4 12 seconds
+# 5 480 seconds
+# 6 23,040 38 minutes
+# 7 2,580,480 4 days
+# 8 660,602,880 4  years!!!!
+
+

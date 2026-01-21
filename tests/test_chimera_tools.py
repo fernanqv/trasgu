@@ -54,21 +54,85 @@ class TestChimeraVines(unittest.TestCase):
         with open(output_path, "r") as f:
             lines = f.readlines()
             
-        self.assertGreater(len(lines), 1, "Output file is empty")
-        # Check second line
-        second_line = lines[1].strip()
+        self.assertGreater(len(lines), 0, "Output file is empty")
+        # Check first line - should NOT be a header, but numeric data
+        first_line = lines[0].strip()
+        # The expected string for the first vine in chunk 1 (vine_id 100)
         expected_string = "100,28,-10687.981736"
-        self.assertEqual(second_line, expected_string)
+        self.assertEqual(first_line, expected_string)
 
-        # Remove the file and folder after test
+        # Cleanup
         os.remove(output_path)
-        os.rmdir(self.config.output_dir)
+        if not os.listdir(self.config.output_dir):
+            os.rmdir(self.config.output_dir)
+
+    def test_chunk_status(self):
+        """Test the get_chunk_status method."""
+        chunk_index = 0
+        self.config.fit_vinecop_chunk_to_file(chunk_index=chunk_index)
+        
+        status = self.config.get_chunk_status()
+        self.assertIn(chunk_index, status["finished_chunks"])
+        self.assertGreater(status["finished_chunks_count"], 0)
+        
+        # Cleanup
+        filename = f"fit_chunk_{chunk_index:04d}_{self.config.chunk_size:05d}.csv"
+        os.remove(os.path.join(self.config.output_dir, filename))
+        if not os.listdir(self.config.output_dir):
+            os.rmdir(self.config.output_dir)
+
+    def test_combine_chunks(self):
+        """Test the combine_chunks method."""
+        # Create two small chunks
+        self.config.fit_vinecop_chunk_to_file(chunk_index=0)
+        self.config.fit_vinecop_chunk_to_file(chunk_index=1)
+        
+        combined_file = "combined_test.csv"
+        combined_path = self.config.combine_chunks(output_filename=combined_file, delete_chunks=True)
+        
+        self.assertTrue(os.path.exists(combined_path))
+        
+        with open(combined_path, "r") as f:
+            lines = f.readlines()
+        
+        # Header + at least two chunks each of size config.chunk_size
+        # (Though in our tests chunk_size might be small)
+        self.assertEqual(lines[0].strip(), "vine_id,n_parameters,aic")
+        
+        # Cleanup
+        os.remove(combined_path)
+        if not os.listdir(self.config.output_dir):
+            os.rmdir(self.config.output_dir)
 
 
     def test_chunk_matrices_range(self):
         """Test 6: tuple_range has to be (100,199)."""
         tuple_range = self.config.print_chunk_matrices_range(1)
         self.assertEqual(tuple_range, (100, 199))
+
+    def test_fit_all_chunks(self):
+        """Test the fit_all_chunks method."""
+        try:
+            # Process only 2 chunks for the test and combine
+            self.config.fit_all_chunks(skip_finished=False, max_chunks=2, combine_at_end=True)
+            
+            # Check if both files exist
+            for i in range(2):
+                filename = f"fit_chunk_{i:04d}_{self.config.chunk_size:05d}.csv"
+                path = os.path.join(self.config.output_dir, filename)
+                self.assertTrue(os.path.exists(path), f"Chunk {i} file not found")
+                os.remove(path)
+            
+            # Check combined file
+            combined_path = os.path.join(self.config.output_dir, "final_results.csv")
+            self.assertTrue(os.path.exists(combined_path), "Combined file not found")
+            os.remove(combined_path)
+        finally:
+            pass
+            
+        if os.path.exists(self.config.output_dir) and not os.listdir(self.config.output_dir):
+            os.rmdir(self.config.output_dir)
+
 
 if __name__ == "__main__":
     unittest.main()
