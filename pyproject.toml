@@ -43,6 +43,7 @@ chimera_monitor = "scripts.chimera_monitor:main"
 chimera_fit_chunk = "scripts.chimera_fit_chunk:main"
 chimera_count_chunks = "scripts.chimera_count_chunks:main"
 chimera_time_fit = "scripts.chimera_time_fit:main"
+chimera_get_matrix = "scripts.chimera_get_matrix:main"
 
 [tool.setuptools]
 packages = ["scripts"]

@@ -7,9 +7,9 @@ def main():
     parser = argparse.ArgumentParser(description="Run vine copula fitting for all chunks.")
     parser.add_argument("config", help="Path to the YAML configuration file.")
     parser.add_argument("--max-chunks", "-m", type=int, help="Limit the number of chunks to process.")
-    parser.add_argument("--combine", action="store_true", help="Combine results after fitting.")
+    parser.add_argument("--no-combine", action="store_false", dest="combine", help="Do not combine results after fitting.")
+    parser.set_defaults(combine=True)
     parser.add_argument("--no-skip", action="store_false", dest="skip_finished", help="Do not skip finished chunks.")
-    parser.set_defaults(skip_finished=True)
 
     args = parser.parse_args()
 

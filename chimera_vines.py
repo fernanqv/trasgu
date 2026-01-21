@@ -160,7 +160,7 @@ class ChimeraVines:
         data = matrices[start:end, :, :]
         return np.array(data)
 
-    def _get_matrix_from_id(self, matrix_id: int) -> np.ndarray:
+    def get_matrix(self, matrix_id: int) -> np.ndarray:
         """
         Get a single matrix by ID.
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
     
 
 
-    # print(config._get_matrix_from_id(10))
+    # print(config.get_matrix(10))
     # print(config._load_matrices_from_zarr(10, 100))
     # # print(config)
     

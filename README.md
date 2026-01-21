@@ -29,6 +29,22 @@
 
 ---
 
+## 🧩 Chunk-based Processing
+
+To handle the millions of potential vine structures efficiently, `chimera_vines` uses a **chunk-based processing** strategy. Instead of loading and fitting every structure at once, the work is divided into smaller groups called "chunks."
+
+### How it works:
+1.  **Segmentation**: The total number of vine structures (e.g., 600M+) is divided by your defined `chunk_size` (e.g., 20,000).
+2.  **Parallelization**:
+    -   **Local**: Within a single chunk, fitting is distributed across `max_workers` CPU cores.
+    -   **HPC (SLURM)**: Each chunk is submitted as an independent task in a SLURM job array, allowing thousands of chunks to be processed simultaneously across a cluster.
+3.  **Persistence**: Each chunk saves its results to a unique CSV file (`fit_chunk_NNNN_MMMMM.csv`). This prevents data loss if a long-running task is interrupted.
+4.  **Aggregation**: Once all chunks are finished, they are combined into a single `final_results.csv` for analysis.
+
+This approach ensures **low memory footprint**, **fault tolerance**, and **massive scalability**.
+
+---
+
 ## ⚙️ Configuration (YAML)
 
 All tools in this toolkit rely on a YAML configuration file. Below are the available parameters:
@@ -62,21 +78,21 @@ The package provides several command-line entry points:
 ### 1. `chimera_time_fit`
 Estimate how long it will take to process your data.
 ```bash
-(chimera2) [valvanuz@geocean02 chimera_vines]$ chimera_time_fit examples/run_config/minimal.yaml 
+[geocean02 chimera_vines]$ chimera_time_fit examples/run_config/minimal.yaml 
 2026-01-20 19:02:58 - vine_config - INFO - Estimated time for full chunk (1000) running with 1 workers: 1.64 minutes
 ```
 ### 2. `chimera_count_chunks`
 Return the number of chunks for the desired configuration
 
 ```bash
-(chimera2) [valvanuz@geocean02 chimera_vines]$ chimera_count_chunks examples/run_config/minimal.yaml 
+[geocean02 chimera_vines]$ chimera_count_chunks examples/run_config/minimal.yaml 
 24
 ```
 
 ### 3. `chimera_submit_slurm`
 Submit missing chunks as a SLURM array job to your cluster.
 ```bash
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_submit_slurm examples/run_config/altamira.yaml 
+valvanuz@login01:> chimera_submit_slurm examples/run_config/altamira.yaml 
 2026-01-20 18:49:41 - vine_config - INFO - Status: 0/130 chunks finished (0.00%)
 2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 examples/launchers/launch_altamira.sh examples/run_config/altamira.yaml
 2026-01-20 18:49:41 - vine_config - INFO - SLURM output: Submitted batch job 699021
@@ -85,7 +101,7 @@ valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_submit_slurm ex
 ### 4. `chimera_monitor`
 Check the progress and completion percentage of your fitting task.
 ```bash
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_monitor examples/run_config/altamira.yaml 
+valvanuz@login01:> chimera_monitor examples/run_config/altamira.yaml 
 2026-01-20 19:07:16 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 
 --- Processing Status ---
@@ -99,12 +115,12 @@ All chunks finished!
 ### 4. `chimera_combine`
 Finalize the task by merging all chunk CSVs into a single master file.
 ```bash
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_combine examples/run_config/altamira.yaml 
+valvanuz@login01:> chimera_combine examples/run_config/altamira.yaml 
 2026-01-20 19:08:09 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 2026-01-20 19:08:09 - vine_config - INFO - Combining 130 chunks into fit_results_altamira/final_results.csv
 2026-01-20 19:08:10 - vine_config - INFO - Combined file saved to fit_results_altamira/final_results.csv
 Successfully combined chunks into: fit_results_altamira/final_results.csv
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> head fit_results_altamira/final_results.csv 
+valvanuz@login01:> head fit_results_altamira/final_results.csv 
 vine_id,n_parameters,aic
 0,21,-9304.195685
 1,21,-9323.297687
