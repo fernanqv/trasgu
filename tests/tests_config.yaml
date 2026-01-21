@@ -1,3 +1,3 @@
-data_file: inputs/input8_500_gumbel_high.txt
+data_file: examples/inputs/input8_500_gumbel_high.txt
 chunk_size: 100
 output_dir: fit_tests

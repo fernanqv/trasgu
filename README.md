@@ -45,12 +45,12 @@ All tools in this toolkit rely on a YAML configuration file. Below are the avail
 
 ### Example `config.yaml`
 ```yaml
-data_file: inputs/input6_500_gumbel_high.txt
+data_file: examples/inputs/input6_500_gumbel_high.txt
 chunk_size: 2000
 output_dir: fit_results
-slurm_launcher: launchers/launch_geoocean.sh
+slurm_launcher: examples/launchers/launch_geoocean.sh
 max_workers: 4
-controls_file: controls_examples/controls.pkl
+controls_file: examples/controls/controls.pkl
 ```
 
 ---
@@ -62,31 +62,30 @@ The package provides several command-line entry points:
 ### 1. `chimera_time_fit`
 Estimate how long it will take to process your data.
 ```bash
-(chimera2) [valvanuz@geocean02 chimera_vines]$ chimera_time_fit yaml_examples/minimal.yaml 
+(chimera2) [valvanuz@geocean02 chimera_vines]$ chimera_time_fit examples/run_config/minimal.yaml 
 2026-01-20 19:02:58 - vine_config - INFO - Estimated time for full chunk (1000) running with 1 workers: 1.64 minutes
 ```
 ### 2. `chimera_count_chunks`
 Return the number of chunks for the desired configuration
 
 ```bash
-(chimera2) [valvanuz@geocean02 chimera_vines]$ chimera_count_chunks yaml_examples/minimal.yaml 
+(chimera2) [valvanuz@geocean02 chimera_vines]$ chimera_count_chunks examples/run_config/minimal.yaml 
 24
 ```
 
 ### 3. `chimera_submit_slurm`
 Submit missing chunks as a SLURM array job to your cluster.
 ```bash
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_submit_slurm yaml_examples/altamira.yaml 
+valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_submit_slurm examples/run_config/altamira.yaml 
 2026-01-20 18:49:41 - vine_config - INFO - Status: 0/130 chunks finished (0.00%)
-2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 launchers/launch_altamira.sh yaml_examples/altamira.yaml
+2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 examples/launchers/launch_altamira.sh examples/run_config/altamira.yaml
 2026-01-20 18:49:41 - vine_config - INFO - SLURM output: Submitted batch job 699021
-
 ```
 
 ### 4. `chimera_monitor`
 Check the progress and completion percentage of your fitting task.
 ```bash
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_monitor yaml_examples/altamira.yaml 
+valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_monitor examples/run_config/altamira.yaml 
 2026-01-20 19:07:16 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 
 --- Processing Status ---
@@ -100,7 +99,7 @@ All chunks finished!
 ### 4. `chimera_combine`
 Finalize the task by merging all chunk CSVs into a single master file.
 ```bash
-valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_combine yaml_examples/altamira.yaml 
+valvanuz@login01:~/valva/chimera/chimera_vines(develop)> chimera_combine examples/run_config/altamira.yaml 
 2026-01-20 19:08:09 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 2026-01-20 19:08:09 - vine_config - INFO - Combining 130 chunks into fit_results_altamira/final_results.csv
 2026-01-20 19:08:10 - vine_config - INFO - Combined file saved to fit_results_altamira/final_results.csv
@@ -175,4 +174,4 @@ controls = pv.FitControlsVinecop(
 with open("my_controls.pkl", "wb") as f:
     pickle.dump(controls, f)
 ```
-Then reference it in your YAML: `controls_file: my_controls.pkl`.
+Then reference it in your YAML: `controls_file: examples/controls/my_controls.pkl`.

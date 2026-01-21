@@ -2,8 +2,8 @@ data_file: inputs/input6_500_gumbel_high.txt
 chunk_size: 2000
 output_dir: fit_results_geoocean
 chimera_url: /lustre/geocean/WORK/valvanuz/chimera.zarr
-controls_file: controls_examples/controls.pkl
-max_workers: 4
+controls_file: controls/controls.pkl
+max_workers: 16
 slurm_launcher: launchers/launch_slurm.sh
 
 # 4 12 seconds
