@@ -29,22 +29,22 @@ jobs:
           auto-update-conda: true
 
       - name: Create conda environment
-        run: conda create -n chimera_vines python=${{ matrix.python-version }}
+        run: conda create -n trasgu python=${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           source $CONDA/etc/profile.d/conda.sh
-          conda activate chimera_vines
+          conda activate trasgu
           pip install -e .[dev]
 
       - name: Run Ruff
         run: |
           source $CONDA/etc/profile.d/conda.sh
-          conda activate chimera_vines
+          conda activate trasgu
           ruff check .
 
       - name: Run tests
         run: |
           source $CONDA/etc/profile.d/conda.sh
-          conda activate chimera_vines
+          conda activate trasgu
           pytest

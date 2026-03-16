@@ -2,7 +2,7 @@
 import sys
 import argparse
 import numpy as np
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Get a matrix from Chimera Zarr by ID")
@@ -12,7 +12,7 @@ def main():
     args = parser.parse_args()
     
     try:
-        cv = ChimeraVines(args.config)
+        cv = Trasgu(args.config)
         matrix = cv.get_matrix(args.id)
         
         print(f"Matrix ID: {args.id}")

@@ -1,17 +1,17 @@
 import unittest
 import os
 import time
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
-class TestChimeraVines(unittest.TestCase):
-    """Test the ChimeraVines class."""
+class TestTrasgu(unittest.TestCase):
+    """Test the Trasgu class."""
 
     def setUp(self):
         """Set up the test configuration."""
         self.config_path = "tests/tests_config.yaml"
         if not os.path.exists(self.config_path):
             self.fail(f"Configuration file {self.config_path} not found.")
-        self.config = ChimeraVines(self.config_path)
+        self.config = Trasgu(self.config_path)
 
     def test_measure_fitting_time(self):
         """Test 1: measure_fitting_time has to take less than 1 minute."""

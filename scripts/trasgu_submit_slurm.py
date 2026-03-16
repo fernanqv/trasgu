@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Submit missing vine copula chunks to a SLURM cluster.")
@@ -13,13 +13,13 @@ def main():
     args = parser.parse_args()
 
     try:
-        config = ChimeraVines(args.config)
+        config = Trasgu(args.config)
         config.launch_all_chunks_slurm(
             skip_finished=args.skip_finished,
             max_chunks=args.max_chunks
         )
     except Exception as e:
-        # ChimeraVines sets up its own logger named 'vine_config'
+        # Trasgu sets up its own logger named 'vine_config'
         logging.getLogger("vine_config").error(f"SLURM submission failed: {e}")
         exit(1)
 

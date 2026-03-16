@@ -2,7 +2,7 @@
 import argparse
 import sys
 import os
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Worker script to fit a single vine copula chunk.")
@@ -16,7 +16,7 @@ def main():
         sys.exit(1)
 
     try:
-        config = ChimeraVines(args.config)
+        config = Trasgu(args.config)
         config.fit_vinecop_chunk_to_file(args.chunk_id)
     except Exception as e:
         print(f"Error processing chunk {args.chunk_id}: {e}", file=sys.stderr)

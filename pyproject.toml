@@ -3,7 +3,7 @@ requires = ["setuptools>=60"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "chimera_vines"
+name = "trasgu"
 version = "0.1.0"
 description = "Vine copula fitting over Chimera Zarr structures"
 readme = "README.md"
@@ -36,15 +36,15 @@ dev = [
 ]
 
 [project.scripts]
-chimera_fit_all = "scripts.chimera_fit_all:main"
-chimera_submit_slurm = "scripts.chimera_submit_slurm:main"
-chimera_combine = "scripts.chimera_combine:main"
-chimera_monitor = "scripts.chimera_monitor:main"
-chimera_fit_chunk = "scripts.chimera_fit_chunk:main"
-chimera_count_chunks = "scripts.chimera_count_chunks:main"
-chimera_time_fit = "scripts.chimera_time_fit:main"
-chimera_get_matrix = "scripts.chimera_get_matrix:main"
+trasgu_fit_all = "scripts.trasgu_fit_all:main"
+trasgu_submit_slurm = "scripts.trasgu_submit_slurm:main"
+trasgu_combine = "scripts.trasgu_combine:main"
+trasgu_monitor = "scripts.trasgu_monitor:main"
+trasgu_fit_chunk = "scripts.trasgu_fit_chunk:main"
+trasgu_count_chunks = "scripts.trasgu_count_chunks:main"
+trasgu_time_fit = "scripts.trasgu_time_fit:main"
+trasgu_get_matrix = "scripts.trasgu_get_matrix:main"
 
 [tool.setuptools]
 packages = ["scripts"]
-py-modules = ["chimera_vines"]
+py-modules = ["trasgu"]

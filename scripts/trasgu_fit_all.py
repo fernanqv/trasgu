@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Run vine copula fitting for all chunks.")
@@ -15,7 +15,7 @@ def main():
 
     # Instantiate the class with the provided config file
     try:
-        config = ChimeraVines(args.config)
+        config = Trasgu(args.config)
         
         # Run the fitting process
         config.fit_all_chunks(
@@ -24,7 +24,7 @@ def main():
             combine_at_end=args.combine
         )
     except Exception as e:
-        # We don't need to re-log level here as ChimeraVines already set up logging
+        # We don't need to re-log level here as Trasgu already set up logging
         logging.getLogger("vine_config").error(f"Execution failed: {e}")
         exit(1)
 

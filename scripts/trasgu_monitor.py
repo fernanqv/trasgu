@@ -3,7 +3,7 @@ import argparse
 import logging
 import sys
 import time
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def print_status(status):
     print("\n--- Processing Status ---")
@@ -29,7 +29,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        config = ChimeraVines(args.config)
+        config = Trasgu(args.config)
         
         while True:
             status = config.get_chunk_status()

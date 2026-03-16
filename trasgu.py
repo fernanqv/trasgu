@@ -30,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger("vine_config")
 logger.debug("Debug message")
 
-class ChimeraVines:
+class Trasgu:
     """
     Configuration for vine copula analysis from YAML.
     Loads YAML parameters as class attributes and provides
@@ -44,7 +44,7 @@ class ChimeraVines:
         Args:
             yaml_path: Path to the YAML configuration file.
         """
-        logger.debug(f"Initializing ChimeraVines with YAML file: {yaml_path}")
+        logger.debug(f"Initializing Trasgu with YAML file: {yaml_path}")
         self.yaml_path = Path(yaml_path)
 
         # Load YAML
@@ -60,18 +60,18 @@ class ChimeraVines:
             logger.setLevel(logging.DEBUG)
             logger.debug("Debug mode enabled via configuration")
 
-        if not hasattr(self, "chimera_url"):
+        if not hasattr(self, "trasgu_url"):
             fs = fsspec.filesystem("http")
-            self.chimera_store = fs.get_mapper(
+            self.trasgu_store = fs.get_mapper(
                 "https://geoocean.sci.unican.es/chimera/chimera.zarr"
             )
         else:
-            # If .chimera_url is a local path, use local filesystem, else use HTTP
-            if os.path.exists(self.chimera_url):
-                self.chimera_store = self.chimera_url
+            # If .trasgu_url is a local path, use local filesystem, else use HTTP
+            if os.path.exists(self.trasgu_url):
+                self.trasgu_store = self.trasgu_url
             else:
                 fs = fsspec.filesystem("http")
-                self.chimera_store = fs.get_mapper(self.chimera_url)
+                self.trasgu_store = fs.get_mapper(self.trasgu_url)
 
         if not hasattr(self, "output_dir"):
             self.output_dir = "fit_results"
@@ -105,7 +105,7 @@ class ChimeraVines:
     def __repr__(self) -> str:
         """Human-readable representation of the configuration."""
         attrs = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
-        return f"ChimeraVines({attrs})"
+        return f"Trasgu({attrs})"
 
     def _fit_vinecop_chunk_internal(
         self,
@@ -155,7 +155,7 @@ class ChimeraVines:
             Numpy array of shape (end-start, n_vars, n_vars).
         """
         logger.debug(f"Loading matrices from {start} to {end}")
-        root = zarr.open_group(self.chimera_store, mode="r")
+        root = zarr.open_group(self.trasgu_store, mode="r")
         matrices = root[f"matrices{self.n_vars}"]
         data = matrices[start:end, :, :]
         return np.array(data)
@@ -186,14 +186,14 @@ class ChimeraVines:
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
         return np.loadtxt(self.data_file)
 
-    def get_number_of_chimera_matrices(self) -> int:
+    def get_number_of_trasgu_matrices(self) -> int:
         """
         Get the total number of matrices in the Chimera Zarr file.
 
         Returns:
             Total number of matrices.
         """
-        root = zarr.open_group(self.chimera_store, mode="r")
+        root = zarr.open_group(self.trasgu_store, mode="r")
         matrices = root[f"matrices{self.n_vars}"]
         logger.debug(f"Total number of matrices: {matrices.shape[0]}")
         total_matrices = matrices.shape[0]
@@ -213,7 +213,7 @@ class ChimeraVines:
         if chunk_size is None:
             chunk_size = self.chunk_size
 
-        total_matrices = self.get_number_of_chimera_matrices()
+        total_matrices = self.get_number_of_trasgu_matrices()
         n_chunks = (total_matrices + chunk_size - 1) // chunk_size
         logger.debug(f"Total number of chunks: {n_chunks}")
         return n_chunks
@@ -549,7 +549,7 @@ class ChimeraVines:
         return ",".join(ranges)
 
 if __name__ == "__main__":
-    config = ChimeraVines("yaml_examples/geoocean.yaml")
+    config = Trasgu("yaml_examples/geoocean.yaml")
     config.launch_all_chunks_slurm(skip_finished=True)
     
     #config.fit_vinecop_chunk_to_file(chunk_index=1)
@@ -569,7 +569,7 @@ if __name__ == "__main__":
 
 
     # # Test 2: n has to be equal to 660602880
-    # n = config.get_number_of_chimera_matrices()
+    # n = config.get_number_of_trasgu_matrices()
     # print(n)
 
     # # Test 3:  n_chunks has to be equal to 6606029

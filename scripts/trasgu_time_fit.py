@@ -2,7 +2,7 @@
 import argparse
 import sys
 import time
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Measure the time taken to fit the first chunk (chunk 0).")
@@ -12,7 +12,7 @@ def main():
     chunk_id = 0
 
     try:
-        config = ChimeraVines(args.config)      
+        config = Trasgu(args.config)      
 
         config.measure_fitting_time()
     

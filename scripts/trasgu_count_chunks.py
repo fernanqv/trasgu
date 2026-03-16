@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import sys
-from chimera_vines import ChimeraVines
+from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Get the total number of chunks for a configuration.")
@@ -10,7 +10,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        config = ChimeraVines(args.config)
+        config = Trasgu(args.config)
         print(config.get_number_of_chunks())
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
