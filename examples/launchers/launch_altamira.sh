@@ -15,4 +15,4 @@ fi
 
 config_path=$(realpath "$config_path")
 
-chimera_fit_chunk --config $config_path $SLURM_ARRAY_TASK_ID
+trasgu_fit_chunk --config $config_path $SLURM_ARRAY_TASK_ID

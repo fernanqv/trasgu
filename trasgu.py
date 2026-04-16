@@ -63,7 +63,7 @@ class Trasgu:
         if not hasattr(self, "trasgu_url"):
             fs = fsspec.filesystem("http")
             self.trasgu_store = fs.get_mapper(
-                "https://geoocean.sci.unican.es/chimera/chimera.zarr"
+                "http://meteo.unican.es/work/chimera.zarr"
             )
         else:
             # If .trasgu_url is a local path, use local filesystem, else use HTTP

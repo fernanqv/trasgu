@@ -1,13 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name="vines8"
-#SBATCH --partition=geocean_priority
-##SBATCH --time=03:59:00
-##SBATCH --cpus-per-task=1
-##SBATCH --mem-per-cpu=512MB
-##SBATCH --exclude=geocean0[7-8]
+#SBATCH --partition=meteo_long
+#SBATCH --exclude=wn055
 
 # These values are set from the sbatch command line when needed
-#SBATCH --array=0-999
+##SBATCH --array=0-999
 
 
 # Exmple sbatch command to run this fit_info.yaml with SLURM:
@@ -26,7 +23,7 @@ fi
 
 config_path=$(realpath "$config_path")
 
-chimera_fit_chunk --config $config_path $SLURM_ARRAY_TASK_ID
+trasgu_fit_chunk --config $config_path $SLURM_ARRAY_TASK_ID
 
 
 

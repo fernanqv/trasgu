@@ -1,7 +1,7 @@
 import numpy as np  # general module for numerical computations
 import pyvinecopulib as pv  # module for vine copula modeling
 import os
-from chimera_tools import load_matrices_from_h5
+from trasgu_tools import load_matrices_from_h5
 
 
 if __name__ == "__main__":
