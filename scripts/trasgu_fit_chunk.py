@@ -6,8 +6,8 @@ from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Worker script to fit a single vine copula chunk.")
+    parser.add_argument("config", help="Path to the YAML configuration file.")
     parser.add_argument("chunk_id", type=int, help="Index of the chunk to process.")
-    parser.add_argument("--config", required=True, help="Path to the YAML configuration file.")
 
     args = parser.parse_args()
 

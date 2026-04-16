@@ -23,14 +23,14 @@ fi
 
 config_path=$(realpath "$config_path")
 
-trasgu_fit_chunk --config $config_path $SLURM_ARRAY_TASK_ID
+trasgu_fit_chunk "$config_path" $SLURM_ARRAY_TASK_ID
 
 
 
 # srun --ntasks=${SLURM_NTASKS} bash -c "
 #   id=\$(( SLURM_ARRAY_TASK_ID * SLURM_NTASKS + SLURM_PROCID ))
 #   echo $id
-#   python fit_vinecop_chunk.py \"\$id\" --config $config_path
+#   trasgu_fit_chunk "$config_path" \"\$id\"
 # "
 
 
