@@ -123,8 +123,8 @@ class Trasgu:
             with open(self.controls_file, "rb") as f:
                 self.controls = pickle.load(f)
 
-        self.data = self._get_data_from_file()
-        self.n_vars = self.data.shape[1]
+        self._data = None
+        self.n_vars = self._get_n_vars_from_file()
 
     def _resolve_run_path(self, value: str) -> Path:
         path = Path(value)
@@ -215,6 +215,22 @@ class Trasgu:
         if not os.path.exists(self.data_file):
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
         return np.loadtxt(self.data_file)
+
+    @property
+    def data(self) -> np.ndarray:
+        if self._data is None:
+            self._data = self._get_data_from_file()
+        return self._data
+
+    def _get_n_vars_from_file(self) -> int:
+        if not os.path.exists(self.data_file):
+            raise FileNotFoundError(f"Data file not found: {self.data_file}")
+        with open(self.data_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    return len(line.split())
+        raise ValueError(f"Data file {self.data_file} contains no data rows.")
 
     def get_number_of_trasgu_matrices(self, use_zarr: bool = False) -> int:
         """
@@ -531,47 +547,4 @@ class Trasgu:
             self.combine_chunks()
 
 if __name__ == "__main__":
-    config = Trasgu("examples/geoocean.yaml")
-    
-    # print(config.get_matrix(10))
-    # print(config._load_matrices_from_zarr(10, 100))
-    # # print(config)
-    
-    # config.get_id_chunk_from_matrix_id(15000)º
-
-    # Examples for doing the unittests    
-
-    # Test 1: test has to take less than 1 minute.
-#    config.measure_fitting_time()
-
-
-    # # Test 2: n has to be equal to 660602880
-    # n = config.get_number_of_trasgu_matrices()
-    # print(n)
-
-    # # Test 3:  n_chunks has to be equal to 6606029
-    # n_chunks = config.get_number_of_chunks()
-    # print(n_chunks)
-
-    # # Test 4: chunk_id has to be equal to 60000
-    # chunk_id = config.get_id_chunk_from_matrix_id(matrix_id=6000000)
-    # print(chunk_id)
-
-    # Test 5: Test that the second line of file fit_tests/fit_chunk_0001_00100.csv has this exact string "100,28,-10687.981736". 
-    # Also: Obtain a variable with the time taken to run the command
-#    config.fit_vinecop_chunk_to_file(chunk_index=1)
-
-
-
-    # Test 6: tuple_range has to be (100,199)
-    tuple_range= config.print_chunk_matrices_range(1)
-    
-
-
-    # start_time = time.perf_counter()
-    # config.fit_vinecop_chunk_parallel()
-    # elapsed_time = time.perf_counter() - start_time
-
-    # print(f"Fitting completed in {elapsed_time:.2f} seconds")
-
-    # print(config.get_number_of_chunks(27000))
+    pass
