@@ -9,7 +9,7 @@
 -   **High Performance**: Leverages `pyvinecopulib` for efficient C++-backed copula fitting.
 -   **Structured Exploration**: Specifically designed to work with Chimera Zarr structures.
 -   **Scalable**: Efficiently splits millions of vine structures into chunks for parallel processing.
--   **HPC Ready**: Built-in support for SLURM array jobs with customizable launcher templates.
+-   **HPC Ready**: Built-in support for SLURM array jobs via Snakemake profiles.
 -   **CLI-First**: Comprehensive suite of command-line tools for a streamlined workflow.
 
 ---
@@ -216,8 +216,25 @@ Manually fit a specific chunk. Used internally by Snakemake but available for de
 trasgu_fit_chunk 0  # Process chunk index 0
 ```
 
-### Deprecated commands
-`trasgu_fit_all` and `trasgu_submit_slurm` are deprecated. Use `trasgu_run` locally and `trasgu_run --profile slurm` on SLURM.
+
+## 🔌 Offline / No-Network Cluster Execution (e.g., DelftBlue)
+
+On some HPC clusters like **DelftBlue**, compute nodes do not have external internet access and cannot fetch the Chimera Zarr structures dynamically via HTTP.
+
+To run in these environments:
+
+1. **Download the Zarr dataset** on a node with internet access (e.g., login node) using the `trasgu_download_zarr` tool.
+   
+   For example, to download arrays for variable sizes 4, 5, 6, and 7 to a shared folder in `/scratch`:
+   ```bash
+   trasgu_download_zarr /scratch/vfernandezquir/chimera.zarr --vars 4,5,6,7
+   ```
+   *Note: By default, `--vars 4,5,6,7` are downloaded. If you require size 8, note that it is ~338 GB and will require confirmation.*
+
+2. **Configure your `trasgu.yaml`** to point to the local path of the downloaded Zarr archive:
+   ```yaml
+   trasgu_url: /scratch/vfernandezquir/chimera.zarr
+   ```
 
 ---
 

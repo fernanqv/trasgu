@@ -73,7 +73,7 @@ class Trasgu:
             if not key.startswith("#"):  # Ignore comments
                 setattr(self, key, value)
 
-        for path_attr in ("data_file", "output_dir", "controls_file", "slurm_launcher"):
+        for path_attr in ("data_file", "output_dir", "controls_file"):
             if hasattr(self, path_attr):
                 setattr(self, path_attr, str(self._resolve_run_path(getattr(self, path_attr))))
 
@@ -530,81 +530,9 @@ class Trasgu:
             logger.info("Combining results at the end")
             self.combine_chunks()
 
-    def launch_all_chunks_slurm(self, skip_finished: bool = True, max_chunks: Optional[int] = None) -> None:
-        """
-        Launch all missing chunks as a SLURM array job.
-
-        Args:
-            skip_finished: If True, only launches chunks that don't have an output file.
-            max_chunks: Optional limit on the number of chunks to consider.
-        """
-        total_chunks = self.get_number_of_chunks()
-        if max_chunks is not None:
-            total_chunks = min(total_chunks, max_chunks)
-
-        status = self.get_chunk_status()
-        finished_chunks = set(status["finished_chunks"])
-        
-        chunks_to_launch = [i for i in range(total_chunks) if not (skip_finished and i in finished_chunks)]
-
-        if not chunks_to_launch:
-            logger.info("No chunks to launch.")
-            return
-
-        array_str = self._get_slurm_array_string(chunks_to_launch)
-        
-        if not hasattr(self, "slurm_launcher"):
-            raise ValueError("slurm_launcher parameter is required in YAML for SLURM submission")
-        
-        launcher_path = self.slurm_launcher
-        if not os.path.exists(launcher_path):
-            raise FileNotFoundError(f"SLURM launcher script not found: {launcher_path}")
-
-        cmd = [
-            "sbatch",
-            f"--array={array_str}",
-            f"--ntasks={self.max_workers}",
-            "--nodes=1",
-            launcher_path,
-            str(self.config_dir),
-        ]
-
-        logger.info(f"Launching SLURM array job: {' '.join(cmd)}")
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            logger.info(f"SLURM output: {result.stdout.strip()}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to submit SLURM job: {e.stderr}")
-            raise
-
-    def _get_slurm_array_string(self, indices: list[int]) -> str:
-        """
-        Convert a list of indices into a SLURM array string (e.g., 0-5,7,10-12).
-        """
-        if not indices:
-            return ""
-        
-        indices = sorted(indices)
-        ranges = []
-        for _, g in itertools.groupby(enumerate(indices), lambda x: x[0] - x[1]):
-            group = list(g)
-            start = group[0][1]
-            end = group[-1][1]
-            if start == end:
-                ranges.append(str(start))
-            else:
-                ranges.append(f"{start}-{end}")
-        
-        return ",".join(ranges)
-
 if __name__ == "__main__":
     config = Trasgu("examples/geoocean.yaml")
-    config.launch_all_chunks_slurm(skip_finished=True)
     
-    #config.fit_vinecop_chunk_to_file(chunk_index=1)
-    
-
-
     # print(config.get_matrix(10))
     # print(config._load_matrices_from_zarr(10, 100))
     # # print(config)

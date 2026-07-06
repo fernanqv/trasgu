@@ -37,8 +37,6 @@ dev = [
 ]
 
 [project.scripts]
-trasgu_fit_all = "scripts.trasgu_fit_all:main"
-trasgu_submit_slurm = "scripts.trasgu_submit_slurm:main"
 trasgu_combine = "scripts.trasgu_combine:main"
 trasgu_monitor = "scripts.trasgu_monitor:main"
 trasgu_fit_chunk = "scripts.trasgu_fit_chunk:main"
@@ -46,6 +44,8 @@ trasgu_count_chunks = "scripts.trasgu_count_chunks:main"
 trasgu_time_fit = "scripts.trasgu_time_fit:main"
 trasgu_get_matrix = "scripts.trasgu_get_matrix:main"
 trasgu_run = "scripts.trasgu_run:main"
+trasgu_download_zarr = "scripts.trasgu_download_zarr:main"
+
 
 [tool.setuptools]
 packages = ["scripts", "trasgu_workflow"]

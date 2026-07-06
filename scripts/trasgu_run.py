@@ -38,7 +38,24 @@ def _prepare_run_env() -> dict[str, str]:
     return env
 
 
+def _patch_slurm_jobstep_plugin():
+    try:
+        import snakemake_executor_plugin_slurm_jobstep
+        plugin_file = Path(snakemake_executor_plugin_slurm_jobstep.__file__)
+        if plugin_file.exists():
+            content = plugin_file.read_text()
+            if "SLURM_CONF" not in content and '"SLURM_SUBMIT_HOST",' in content:
+                patched = content.replace(
+                    '"SLURM_SUBMIT_HOST",',
+                    '"SLURM_SUBMIT_HOST",\n            "SLURM_CONF",'
+                )
+                plugin_file.write_text(patched)
+    except Exception:
+        pass
+
+
 def main():
+    _patch_slurm_jobstep_plugin()
     parser = argparse.ArgumentParser(
         description="Run trasgu chunks with the packaged Snakemake workflow."
     )
@@ -72,6 +89,14 @@ def main():
             cmd.extend(["--profile", str(_profile_path(args.profile))])
         else:
             cmd.extend(["--cores", str(config.max_workers)])
+
+        if "SLURM_CONF" in env:
+            has_envvars = any(
+                arg == "--envvars" or arg.startswith("--envvars=")
+                for arg in snakemake_args
+            )
+            if not has_envvars:
+                cmd.extend(["--envvars", "SLURM_CONF"])
 
         if args.dry_run:
             cmd.append("--dry-run")

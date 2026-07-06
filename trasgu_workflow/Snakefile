@@ -9,6 +9,8 @@ total_chunks = trasgu.get_number_of_chunks()
 output_dir = Path(trasgu.output_dir)
 chunk_ids = [f"{i:04d}" for i in range(total_chunks)]
 
+localrules: combine
+
 
 rule all:
     input:
