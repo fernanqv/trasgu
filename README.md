@@ -22,10 +22,36 @@
     cd trasgu
     ```
 
-2.  Install in editable mode:
+2.  Install the locked runtime environment with `uv`:
     ```bash
-    pip install -e .
+    uv sync --frozen --no-dev
     ```
+
+3.  Either run commands through `uv`:
+    ```bash
+    uv run --frozen trasgu_time_fit examples/run_config/minimal.yaml
+    ```
+
+    or activate the project environment for an interactive session:
+    ```bash
+    source .venv/bin/activate
+    trasgu_time_fit examples/run_config/minimal.yaml
+    ```
+
+For development tools, install the default development group:
+```bash
+uv sync --frozen
+```
+
+If `uv` is not installed yet, install it first:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Alternatively, install in editable mode with `pip`:
+```bash
+pip install -e .
+```
 
 ---
 
@@ -169,7 +195,7 @@ To use SLURM, you must provide a launcher script (defined in your YAML as `slurm
 #SBATCH --nodes=1
 
 # The toolkit will automatically append the chunk index as the last argument
-trasgu_fit_chunk --config $1 $SLURM_ARRAY_TASK_ID
+uv run --project /path/to/trasgu --frozen trasgu_fit_chunk "$1" "$SLURM_ARRAY_TASK_ID"
 ```
 
 ---

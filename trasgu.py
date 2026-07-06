@@ -276,7 +276,10 @@ class Trasgu:
         matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
 
         # Split matrices into sub-chunks for each worker
-        n_workers = min(self.max_workers, len(matrices))    
+        n_workers = min(self.max_workers, len(matrices))
+        if n_workers == 1:
+            return self._fit_vinecop_chunk_internal(matrices, data, first_vine)
+
         indices = np.array_split(np.arange(len(matrices)), n_workers)
         all_results = []
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
@@ -549,7 +552,7 @@ class Trasgu:
         return ",".join(ranges)
 
 if __name__ == "__main__":
-    config = Trasgu("yaml_examples/geoocean.yaml")
+    config = Trasgu("examples/geoocean.yaml")
     config.launch_all_chunks_slurm(skip_finished=True)
     
     #config.fit_vinecop_chunk_to_file(chunk_index=1)

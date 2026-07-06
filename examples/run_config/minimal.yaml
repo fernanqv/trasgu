@@ -1,6 +1,7 @@
 data_file: inputs/input6_500_gumbel_high.txt
 chunk_size: 1000
 output_dir: fit_results_minimal
+max_workers: 4
 
 # Example sbatch command to run this fit_info.yaml with SLURM:
 # sbatch --array=0 --ntasks=16  ./launch_fit.sh ./fit_info.yaml

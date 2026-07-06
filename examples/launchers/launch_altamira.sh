@@ -14,5 +14,8 @@ if [[ ! -f "$config_path" ]]; then
 fi
 
 config_path=$(realpath "$config_path")
+project_dir=$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")
+examples_dir=$(dirname "$project_dir")
+cd "$examples_dir" || exit 3
 
-trasgu_fit_chunk "$config_path" $SLURM_ARRAY_TASK_ID
+uv run --project "$project_dir" --frozen trasgu_fit_chunk "$config_path" "$SLURM_ARRAY_TASK_ID"

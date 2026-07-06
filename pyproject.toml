@@ -7,7 +7,7 @@ name = "trasgu"
 version = "0.1.0"
 description = "Vine copula fitting over Chimera Zarr structures"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = { text = "GPL-3.0-only" }
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
@@ -17,18 +17,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [
   "numpy>=1.23",
   "PyYAML>=6.0",
-  "zarr>=2.16",
+  "zarr>=3.0,<3.2",
   "fsspec[http]>=2023.6.0",
   "pyvinecopulib>=0.6.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "pytest>=7",
   "ruff>=0.5",
@@ -48,3 +47,6 @@ trasgu_get_matrix = "scripts.trasgu_get_matrix:main"
 [tool.setuptools]
 packages = ["scripts"]
 py-modules = ["trasgu"]
+
+[tool.uv]
+package = true
