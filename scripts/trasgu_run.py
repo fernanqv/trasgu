@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+import argparse
+from importlib import resources
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def _workflow_path(name: str) -> Path:
+    return Path(str(resources.files("trasgu_workflow").joinpath(name)))
+
+
+def _profile_path(profile: str) -> Path:
+    if profile == "slurm":
+        return _workflow_path("profiles/slurm")
+    return Path(profile).expanduser().resolve()
+
+
+def _snakemake_executable() -> str:
+    candidate = Path(sys.executable).parent / "snakemake"
+    if candidate.exists():
+        return str(candidate)
+    return "snakemake"
+
+
+def _prepare_run_env() -> dict[str, str]:
+    env = os.environ.copy()
+    run_cache = Path.cwd() / ".snakemake" / "cache"
+    run_cache.mkdir(parents=True, exist_ok=True)
+    env.setdefault("XDG_CACHE_HOME", str(run_cache))
+    os.environ.setdefault("XDG_CACHE_HOME", env["XDG_CACHE_HOME"])
+
+    mpl_cache = Path.cwd() / ".snakemake" / "matplotlib"
+    mpl_cache.mkdir(parents=True, exist_ok=True)
+    env.setdefault("MPLCONFIGDIR", str(mpl_cache))
+    os.environ.setdefault("MPLCONFIGDIR", env["MPLCONFIGDIR"])
+    return env
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run trasgu chunks with the packaged Snakemake workflow."
+    )
+    parser.add_argument(
+        "--profile",
+        help="Snakemake profile to use. Use 'slurm' for the packaged SLURM profile.",
+    )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Show the Snakemake plan without running jobs.",
+    )
+    parser.add_argument(
+        "--unlock",
+        action="store_true",
+        help="Unlock the Snakemake working directory.",
+    )
+
+    args, snakemake_args = parser.parse_known_args()
+
+    try:
+        env = _prepare_run_env()
+        from trasgu import Trasgu
+
+        config = Trasgu()
+        snakefile = _workflow_path("Snakefile")
+
+        cmd = [_snakemake_executable(), "--snakefile", str(snakefile)]
+        if args.profile:
+            cmd.extend(["--profile", str(_profile_path(args.profile))])
+        else:
+            cmd.extend(["--cores", str(config.max_workers)])
+
+        if args.dry_run:
+            cmd.append("--dry-run")
+        if args.unlock:
+            cmd.append("--unlock")
+
+        cmd.extend(snakemake_args)
+
+        subprocess.run(cmd, check=True, env=env)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

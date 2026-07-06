@@ -1,0 +1,36 @@
+from pathlib import Path
+
+from trasgu import Trasgu
+
+
+trasgu = Trasgu()
+chunk_size = int(trasgu.chunk_size)
+total_chunks = trasgu.get_number_of_chunks()
+output_dir = Path(trasgu.output_dir)
+chunk_ids = [f"{i:04d}" for i in range(total_chunks)]
+
+
+rule all:
+    input:
+        str(output_dir / "final_results.csv")
+
+
+rule fit_chunk:
+    output:
+        str(output_dir / f"fit_chunk_{{chunk_id}}_{chunk_size:05d}.csv")
+    threads:
+        int(trasgu.max_workers)
+    shell:
+        "trasgu_fit_chunk {wildcards.chunk_id}"
+
+
+rule combine:
+    input:
+        expand(
+            str(output_dir / f"fit_chunk_{{chunk_id}}_{chunk_size:05d}.csv"),
+            chunk_id=chunk_ids,
+        )
+    output:
+        str(output_dir / "final_results.csv")
+    shell:
+        "trasgu_combine"

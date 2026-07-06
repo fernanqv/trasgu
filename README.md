@@ -30,14 +30,14 @@
 3.  Either run commands through `uv`:
     ```bash
     cd examples/run_config/minimal
-    uv run --project ../../.. --frozen trasgu_time_fit
+    uv run --project ../../.. --frozen trasgu_run --dry-run
     ```
 
     or activate the project environment for an interactive session:
     ```bash
     source .venv/bin/activate
     cd examples/run_config/minimal
-    trasgu_time_fit
+    trasgu_run --dry-run
     ```
 
 For development tools, install the default development group:
@@ -83,6 +83,7 @@ For example:
 cd examples/run_config/minimal
 trasgu_count_chunks
 trasgu_time_fit
+trasgu_run
 ```
 
 Below are the available `trasgu.yaml` parameters:
@@ -92,7 +93,6 @@ Below are the available `trasgu.yaml` parameters:
 | `data_file` | String | **Yes** | Path to the `.txt` numerical data matrix (observations in rows, variables in columns). |
 | `chunk_size` | Integer | **Yes** | Number of vine copulas to process per chunk (e.g., 20,000). |
 | `output_dir` | String | **Yes** | Directory where CSV results will be saved. |
-| `slurm_launcher` | String | **Yes*** | Path to your SLURM bash script template. *Required only for SLURM tools.* |
 | `max_workers` | Integer | No | Number of CPU cores to use for local processing (Default: 1). |
 | `controls_file` | String | No | Path to a pickled `pyvinecopulib.FitControlsVinecop` object. |
 | `trasgu_url` | String | No | Local path or URL to the Chimera Zarr database. |
@@ -102,10 +102,51 @@ Below are the available `trasgu.yaml` parameters:
 data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 2000
 output_dir: fit_results
-slurm_launcher: ../../launchers/launch_geoocean.sh
 max_workers: 4
 controls_file: ../../controls/controls.pkl
 ```
+
+---
+
+## 🐍 Snakemake Workflow
+
+`trasgu_run` is the recommended way to execute a full run. It launches the packaged Snakemake workflow from the current run directory, where `trasgu.yaml` lives.
+
+Local execution:
+
+```bash
+cd examples/run_config/minimal
+trasgu_run
+```
+
+The value of `max_workers` in `trasgu.yaml` is used as the Snakemake `threads` value for each chunk. For local runs, `trasgu_run` also sets `--cores max_workers`, so only one chunk runs at a time. To use more cores locally, increase `max_workers`.
+
+Dry run:
+
+```bash
+trasgu_run --dry-run
+```
+
+SLURM execution with the packaged profile:
+
+```bash
+cd examples/run_config/altamira
+trasgu_run --profile slurm
+```
+
+Custom Snakemake profile:
+
+```bash
+trasgu_run --profile /path/to/snakemake-profile
+```
+
+Additional unknown arguments are passed through to Snakemake:
+
+```bash
+trasgu_run --dry-run --printshellcmds
+```
+
+The workflow generates all expected chunk CSV files and then combines them into `final_results.csv`.
 
 ---
 
@@ -113,27 +154,25 @@ controls_file: ../../controls/controls.pkl
 
 The package provides several command-line entry points:
 
-### 1. `trasgu_time_fit`
+### 1. `trasgu_run`
+Run the full Snakemake workflow from the current run directory.
+```bash
+[geocean02 minimal]$ trasgu_run
+```
+
+### 2. `trasgu_time_fit`
 Estimate how long it will take to process your data.
 ```bash
 [geocean02 minimal]$ trasgu_time_fit
 2026-01-20 19:02:58 - vine_config - INFO - Estimated time for full chunk (1000) running with 1 workers: 1.64 minutes
 ```
-### 2. `trasgu_count_chunks`
+
+### 3. `trasgu_count_chunks`
 Return the number of chunks for the desired configuration
 
 ```bash
 [geocean02 minimal]$ trasgu_count_chunks
 24
-```
-
-### 3. `trasgu_submit_slurm`
-Submit missing chunks as a SLURM array job to your cluster.
-```bash
-valvanuz@login01:> trasgu_submit_slurm
-2026-01-20 18:49:41 - vine_config - INFO - Status: 0/130 chunks finished (0.00%)
-2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 ../../launchers/launch_altamira.sh /path/to/run
-2026-01-20 18:49:41 - vine_config - INFO - SLURM output: Submitted batch job 699021
 ```
 
 ### 4. `trasgu_monitor`
@@ -172,16 +211,13 @@ vine_id,n_parameters,aic
 ```
 
 ### 5. `trasgu_fit_chunk`
-Manually fit a specific chunk. Used internally by SLURM but available for debugging.
+Manually fit a specific chunk. Used internally by Snakemake but available for debugging.
 ```bash
 trasgu_fit_chunk 0  # Process chunk index 0
 ```
 
-### 6. `trasgu_fit_all`
-Fit all chunks sequentially on your local machine.
-```bash
-trasgu_fit_all
-```
+### Deprecated commands
+`trasgu_fit_all` and `trasgu_submit_slurm` are deprecated. Use `trasgu_run` locally and `trasgu_run --profile slurm` on SLURM.
 
 ---
 
@@ -189,27 +225,21 @@ trasgu_fit_all
 
 1.  **Preparation**: Create a run directory with `trasgu.yaml` and prepare your data file.
 2.  **Estimation**: Run `trasgu_time_fit` to determine the optimal `chunk_size` and expected duration.
-3.  **Submission**: If using a cluster, run `trasgu_submit_slurm`.
+3.  **Execution**: Run `trasgu_run` locally, or `trasgu_run --profile slurm` on a cluster.
 4.  **Monitoring**: Use `trasgu_monitor` periodically to see how many chunks are finished.
-5.  **Aggregation**: Once 100% complete, run `trasgu_combine` to generate your final result file.
+5.  **Aggregation**: Snakemake runs `trasgu_combine` automatically after all chunks are complete.
 
 ---
 
 ## 📂 SLURM Integration
 
-To use SLURM, you must provide a launcher script (defined in your YAML as `slurm_launcher`). This script acts as a template for the array job.
+SLURM execution is handled through Snakemake profiles. The packaged `slurm` profile is available through:
 
-**Example `launch_geoocean.sh`:**
 ```bash
-#!/bin/bash
-#SBATCH --job-name="trasgu"
-#SBATCH --partition=priority
-#SBATCH --nodes=1
-
-# The launcher receives the run directory from trasgu_submit_slurm.
-cd "$1"
-uv run --project /path/to/trasgu --frozen trasgu_fit_chunk "$SLURM_ARRAY_TASK_ID"
+trasgu_run --profile slurm
 ```
+
+The `Snakefile` reads `max_workers` from `trasgu.yaml` and uses it as `threads` for each chunk. The SLURM executor maps those threads to the CPUs requested for each chunk job.
 
 ---
 

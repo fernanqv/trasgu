@@ -25,6 +25,8 @@ dependencies = [
   "zarr>=3.0,<3.2",
   "fsspec[http]>=2023.6.0",
   "pyvinecopulib>=0.6.0",
+  "snakemake>=8",
+  "snakemake-executor-plugin-slurm>=0.10",
 ]
 
 [dependency-groups]
@@ -43,10 +45,14 @@ trasgu_fit_chunk = "scripts.trasgu_fit_chunk:main"
 trasgu_count_chunks = "scripts.trasgu_count_chunks:main"
 trasgu_time_fit = "scripts.trasgu_time_fit:main"
 trasgu_get_matrix = "scripts.trasgu_get_matrix:main"
+trasgu_run = "scripts.trasgu_run:main"
 
 [tool.setuptools]
-packages = ["scripts"]
+packages = ["scripts", "trasgu_workflow"]
 py-modules = ["trasgu"]
+
+[tool.setuptools.package-data]
+trasgu_workflow = ["Snakefile", "profiles/slurm/config.yaml"]
 
 [tool.uv]
 package = true

@@ -4,7 +4,6 @@ output_dir: fit_results_geoocean
 # trasgu_url: /lustre/geocean/WORK/valvanuz/chimera.zarr
 # controls_file: ../../controls/controls.pkl
 max_workers: 32
-slurm_launcher: ../../launchers/launch_unican.sh
 
 # 4 12 seconds
 # 5 480 seconds
