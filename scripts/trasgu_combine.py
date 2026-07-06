@@ -6,14 +6,13 @@ from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Combine individual chunk result files into a single CSV.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
     parser.add_argument("--output", "-o", default="final_results.csv", help="Name of the final combined file (default: final_results.csv).")
     parser.add_argument("--delete", action="store_true", help="Delete individual chunk files after combination.")
 
     args = parser.parse_args()
 
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         output_path = config.combine_chunks(output_filename=args.output, delete_chunks=args.delete)
         print(f"Successfully combined chunks into: {output_path}")
     except Exception as e:

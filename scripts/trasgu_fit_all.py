@@ -5,7 +5,6 @@ from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Run vine copula fitting for all chunks.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
     parser.add_argument("--max-chunks", "-m", type=int, help="Limit the number of chunks to process.")
     parser.add_argument("--no-combine", action="store_false", dest="combine", help="Do not combine results after fitting.")
     parser.set_defaults(combine=True)
@@ -15,7 +14,7 @@ def main():
 
     # Instantiate the class with the provided config file
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         
         # Run the fitting process
         config.fit_all_chunks(

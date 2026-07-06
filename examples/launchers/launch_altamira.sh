@@ -3,19 +3,18 @@
 #SBATCH --partition=wncompute_ifca
 
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 fit_config.yaml" >&2
+  echo "Usage: $0 run_directory" >&2
   exit 1
 fi
 
-config_path=$1
-if [[ ! -f "$config_path" ]]; then
-  echo "ERROR: Config file not found: $config_path" >&2
+run_dir=$1
+if [[ ! -f "$run_dir/trasgu.yaml" ]]; then
+  echo "ERROR: trasgu.yaml not found in run directory: $run_dir" >&2
   exit 2
 fi
 
-config_path=$(realpath "$config_path")
+run_dir=$(realpath "$run_dir")
 project_dir=$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")
-examples_dir=$(dirname "$project_dir")
-cd "$examples_dir" || exit 3
+cd "$run_dir" || exit 3
 
-uv run --project "$project_dir" --frozen trasgu_fit_chunk "$config_path" "$SLURM_ARRAY_TASK_ID"
+uv run --project "$project_dir" --frozen trasgu_fit_chunk "$SLURM_ARRAY_TASK_ID"

@@ -29,13 +29,15 @@
 
 3.  Either run commands through `uv`:
     ```bash
-    uv run --frozen trasgu_time_fit examples/run_config/minimal.yaml
+    cd examples/run_config/minimal
+    uv run --project ../../.. --frozen trasgu_time_fit
     ```
 
     or activate the project environment for an interactive session:
     ```bash
     source .venv/bin/activate
-    trasgu_time_fit examples/run_config/minimal.yaml
+    cd examples/run_config/minimal
+    trasgu_time_fit
     ```
 
 For development tools, install the default development group:
@@ -71,9 +73,19 @@ This approach ensures **low memory footprint**, **fault tolerance**, and **massi
 
 ---
 
-## ⚙️ Configuration (YAML)
+## ⚙️ Run Configuration
 
-All tools in this toolkit rely on a YAML configuration file. Below are the available parameters:
+Each run is configured by a `trasgu.yaml` file in the directory where commands are executed. Relative paths inside `trasgu.yaml` are resolved from that directory; absolute paths are used as-is.
+
+For example:
+
+```bash
+cd examples/run_config/minimal
+trasgu_count_chunks
+trasgu_time_fit
+```
+
+Below are the available `trasgu.yaml` parameters:
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
@@ -85,14 +97,14 @@ All tools in this toolkit rely on a YAML configuration file. Below are the avail
 | `controls_file` | String | No | Path to a pickled `pyvinecopulib.FitControlsVinecop` object. |
 | `trasgu_url` | String | No | Local path or URL to the Chimera Zarr database. |
 
-### Example `config.yaml`
+### Example `trasgu.yaml`
 ```yaml
-data_file: examples/inputs/input6_500_gumbel_high.txt
+data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 2000
 output_dir: fit_results
-slurm_launcher: examples/launchers/launch_geoocean.sh
+slurm_launcher: ../../launchers/launch_geoocean.sh
 max_workers: 4
-controls_file: examples/controls/controls.pkl
+controls_file: ../../controls/controls.pkl
 ```
 
 ---
@@ -104,30 +116,30 @@ The package provides several command-line entry points:
 ### 1. `trasgu_time_fit`
 Estimate how long it will take to process your data.
 ```bash
-[geocean02 trasgu]$ trasgu_time_fit examples/run_config/minimal.yaml 
+[geocean02 minimal]$ trasgu_time_fit
 2026-01-20 19:02:58 - vine_config - INFO - Estimated time for full chunk (1000) running with 1 workers: 1.64 minutes
 ```
 ### 2. `trasgu_count_chunks`
 Return the number of chunks for the desired configuration
 
 ```bash
-[geocean02 trasgu]$ trasgu_count_chunks examples/run_config/minimal.yaml 
+[geocean02 minimal]$ trasgu_count_chunks
 24
 ```
 
 ### 3. `trasgu_submit_slurm`
 Submit missing chunks as a SLURM array job to your cluster.
 ```bash
-valvanuz@login01:> trasgu_submit_slurm examples/run_config/altamira.yaml 
+valvanuz@login01:> trasgu_submit_slurm
 2026-01-20 18:49:41 - vine_config - INFO - Status: 0/130 chunks finished (0.00%)
-2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 examples/launchers/launch_altamira.sh examples/run_config/altamira.yaml
+2026-01-20 18:49:41 - vine_config - INFO - Launching SLURM array job: sbatch --array=0-129 --ntasks=4 --nodes=1 ../../launchers/launch_altamira.sh /path/to/run
 2026-01-20 18:49:41 - vine_config - INFO - SLURM output: Submitted batch job 699021
 ```
 
 ### 4. `trasgu_monitor`
 Check the progress and completion percentage of your fitting task.
 ```bash
-valvanuz@login01:> trasgu_monitor examples/run_config/altamira.yaml 
+valvanuz@login01:> trasgu_monitor
 2026-01-20 19:07:16 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 
 --- Processing Status ---
@@ -141,7 +153,7 @@ All chunks finished!
 ### 4. `trasgu_combine`
 Finalize the task by merging all chunk CSVs into a single master file.
 ```bash
-valvanuz@login01:> trasgu_combine examples/run_config/altamira.yaml 
+valvanuz@login01:> trasgu_combine
 2026-01-20 19:08:09 - vine_config - INFO - Status: 130/130 chunks finished (100.00%)
 2026-01-20 19:08:09 - vine_config - INFO - Combining 130 chunks into fit_results_altamira/final_results.csv
 2026-01-20 19:08:10 - vine_config - INFO - Combined file saved to fit_results_altamira/final_results.csv
@@ -162,20 +174,20 @@ vine_id,n_parameters,aic
 ### 5. `trasgu_fit_chunk`
 Manually fit a specific chunk. Used internally by SLURM but available for debugging.
 ```bash
-trasgu_fit_chunk config.yaml 0  # Process chunk index 0
+trasgu_fit_chunk 0  # Process chunk index 0
 ```
 
 ### 6. `trasgu_fit_all`
 Fit all chunks sequentially on your local machine.
 ```bash
-trasgu_fit_all config.yaml
+trasgu_fit_all
 ```
 
 ---
 
 ## 🔄 Recommended Workflow
 
-1.  **Preparation**: Create your `config.yaml` and prepare your data file.
+1.  **Preparation**: Create a run directory with `trasgu.yaml` and prepare your data file.
 2.  **Estimation**: Run `trasgu_time_fit` to determine the optimal `chunk_size` and expected duration.
 3.  **Submission**: If using a cluster, run `trasgu_submit_slurm`.
 4.  **Monitoring**: Use `trasgu_monitor` periodically to see how many chunks are finished.
@@ -194,8 +206,9 @@ To use SLURM, you must provide a launcher script (defined in your YAML as `slurm
 #SBATCH --partition=priority
 #SBATCH --nodes=1
 
-# The toolkit will automatically append the chunk index as the last argument
-uv run --project /path/to/trasgu --frozen trasgu_fit_chunk "$1" "$SLURM_ARRAY_TASK_ID"
+# The launcher receives the run directory from trasgu_submit_slurm.
+cd "$1"
+uv run --project /path/to/trasgu --frozen trasgu_fit_chunk "$SLURM_ARRAY_TASK_ID"
 ```
 
 ---
@@ -216,4 +229,4 @@ controls = pv.FitControlsVinecop(
 with open("my_controls.pkl", "wb") as f:
     pickle.dump(controls, f)
 ```
-Then reference it in your YAML: `controls_file: examples/controls/my_controls.pkl`.
+Then reference it in your `trasgu.yaml`, relative to the run directory: `controls_file: ../../controls/my_controls.pkl`.

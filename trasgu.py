@@ -20,6 +20,7 @@ import pickle
 import logging
 import subprocess
 import itertools
+from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +31,21 @@ logging.basicConfig(
 logger = logging.getLogger("vine_config")
 logger.debug("Debug message")
 
+CHIMERA_TOTAL_RUNS = {
+    4: 12,
+    5: 480,
+    6: 23040,
+    7: 2580480,
+    8: 660602880,
+}
+
+DEFAULT_CONFIG_NAME = "trasgu.yaml"
+
+
+def _is_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"}
+
 class Trasgu:
     """
     Configuration for vine copula analysis from YAML.
@@ -37,7 +53,7 @@ class Trasgu:
     methods to access Chimera data.
     """
 
-    def __init__(self, yaml_path: str):
+    def __init__(self, yaml_path: str = DEFAULT_CONFIG_NAME):
         """
         Initialize configuration from a YAML file.
 
@@ -46,6 +62,7 @@ class Trasgu:
         """
         logger.debug(f"Initializing Trasgu with YAML file: {yaml_path}")
         self.yaml_path = Path(yaml_path)
+        self.config_dir = self.yaml_path.resolve().parent
 
         # Load YAML
         with open(self.yaml_path, "r") as f:
@@ -55,6 +72,10 @@ class Trasgu:
         for key, value in config.items():
             if not key.startswith("#"):  # Ignore comments
                 setattr(self, key, value)
+
+        for path_attr in ("data_file", "output_dir", "controls_file", "slurm_launcher"):
+            if hasattr(self, path_attr):
+                setattr(self, path_attr, str(self._resolve_run_path(getattr(self, path_attr))))
 
         if hasattr(self, "debug") and self.debug:
             logger.setLevel(logging.DEBUG)
@@ -67,6 +88,9 @@ class Trasgu:
             )
         else:
             # If .trasgu_url is a local path, use local filesystem, else use HTTP
+            if not _is_url(self.trasgu_url):
+                self.trasgu_url = str(self._resolve_run_path(self.trasgu_url))
+
             if os.path.exists(self.trasgu_url):
                 self.trasgu_store = self.trasgu_url
             else:
@@ -74,7 +98,7 @@ class Trasgu:
                 self.trasgu_store = fs.get_mapper(self.trasgu_url)
 
         if not hasattr(self, "output_dir"):
-            self.output_dir = "fit_results"
+            self.output_dir = str(self.config_dir / "fit_results")
 
         if not hasattr(self, "chunk_size"):
             self.chunk_size = 30000
@@ -101,6 +125,12 @@ class Trasgu:
 
         self.data = self._get_data_from_file()
         self.n_vars = self.data.shape[1]
+
+    def _resolve_run_path(self, value: str) -> Path:
+        path = Path(value)
+        if path.is_absolute():
+            return path
+        return self.config_dir / path
 
     def __repr__(self) -> str:
         """Human-readable representation of the configuration."""
@@ -186,13 +216,29 @@ class Trasgu:
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
         return np.loadtxt(self.data_file)
 
-    def get_number_of_trasgu_matrices(self) -> int:
+    def get_number_of_trasgu_matrices(self, use_zarr: bool = False) -> int:
         """
-        Get the total number of matrices in the Chimera Zarr file.
+        Get the total number of matrices available for the configured data size.
+
+        Chimera is static, so the default path uses the versioned matrix counts
+        for each supported number of variables. Set ``use_zarr=True`` to verify
+        the value against the configured Zarr store.
 
         Returns:
             Total number of matrices.
         """
+        if not use_zarr:
+            try:
+                total_matrices = CHIMERA_TOTAL_RUNS[self.n_vars]
+            except KeyError as exc:
+                known = ", ".join(str(n) for n in sorted(CHIMERA_TOTAL_RUNS))
+                raise ValueError(
+                    f"No static Chimera matrix count known for {self.n_vars} "
+                    f"variables. Known values are for: {known}."
+                ) from exc
+            logger.debug(f"Static total number of matrices: {total_matrices}")
+            return total_matrices
+
         root = zarr.open_group(self.trasgu_store, mode="r")
         matrices = root[f"matrices{self.n_vars}"]
         logger.debug(f"Total number of matrices: {matrices.shape[0]}")
@@ -520,7 +566,7 @@ class Trasgu:
             f"--ntasks={self.max_workers}",
             "--nodes=1",
             launcher_path,
-            str(self.yaml_path)
+            str(self.config_dir),
         ]
 
         logger.info(f"Launching SLURM array job: {' '.join(cmd)}")

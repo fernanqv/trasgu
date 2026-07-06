@@ -23,13 +23,12 @@ def print_status(status):
 
 def main():
     parser = argparse.ArgumentParser(description="Monitor the status of chunk processing.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
     parser.add_argument("--watch", "-w", type=int, help="Refresh interval in seconds (simulates watch mode).")
 
     args = parser.parse_args()
 
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         
         while True:
             status = config.get_chunk_status()

@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 import argparse
 import sys
-import os
 from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Worker script to fit a single vine copula chunk.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
     parser.add_argument("chunk_id", type=int, help="Index of the chunk to process.")
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.config):
-        print(f"Error: Configuration file not found: {args.config}", file=sys.stderr)
-        sys.exit(1)
-
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         config.fit_vinecop_chunk_to_file(args.chunk_id)
     except Exception as e:
         print(f"Error processing chunk {args.chunk_id}: {e}", file=sys.stderr)

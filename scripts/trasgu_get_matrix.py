@@ -6,13 +6,12 @@ from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Get a matrix from Chimera Zarr by ID")
-    parser.add_argument("config", help="Path to YAML configuration file")
     parser.add_argument("id", type=int, help="Matrix ID (zero-indexed)")
     
     args = parser.parse_args()
     
     try:
-        cv = Trasgu(args.config)
+        cv = Trasgu()
         matrix = cv.get_matrix(args.id)
         
         print(f"Matrix ID: {args.id}")

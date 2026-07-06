@@ -6,13 +6,11 @@ from trasgu import Trasgu
 
 def main():
     parser = argparse.ArgumentParser(description="Measure the time taken to fit the first chunk (chunk 0).")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
 
     args = parser.parse_args()
-    chunk_id = 0
 
     try:
-        config = Trasgu(args.config)      
+        config = Trasgu()
 
         config.measure_fitting_time()
     

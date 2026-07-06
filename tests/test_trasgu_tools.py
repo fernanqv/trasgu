@@ -4,7 +4,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from trasgu import Trasgu
+import trasgu
+from trasgu import CHIMERA_TOTAL_RUNS, Trasgu
 
 
 VALID_MATRIX_3D = np.array(
@@ -40,7 +41,7 @@ def trasgu_config(tmp_path, monkeypatch):
     matrices = np.stack([VALID_MATRIX_3D] * 5)
 
     output_dir = tmp_path / "fit_results"
-    config_path = tmp_path / "config.yaml"
+    config_path = tmp_path / "trasgu.yaml"
     config_path.write_text(
         "\n".join(
             [
@@ -71,6 +72,76 @@ def trasgu_config(tmp_path, monkeypatch):
 def read_chunk_rows(path):
     with open(path, newline="") as f:
         return list(csv.reader(f))
+
+
+def make_config(tmp_path, data):
+    data_path = tmp_path / "data.txt"
+    np.savetxt(data_path, data)
+
+    config_path = tmp_path / "trasgu.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                f"data_file: {data_path}",
+                "trasgu_url: http://example.invalid/trasgu.zarr",
+                "chunk_size: 2",
+                f"output_dir: {tmp_path / 'fit_results'}",
+            ]
+        )
+        + "\n"
+    )
+    return Trasgu(str(config_path))
+
+
+def test_number_of_trasgu_matrices_uses_static_chimera_counts(tmp_path):
+    config = make_config(tmp_path, np.ones((3, 6)))
+
+    assert config.get_number_of_trasgu_matrices() == CHIMERA_TOTAL_RUNS[6]
+
+
+def test_default_config_uses_trasgu_yaml_and_run_relative_paths(tmp_path, monkeypatch):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    data_path = run_dir / "data.txt"
+    np.savetxt(data_path, np.ones((3, 6)))
+    (run_dir / "trasgu.yaml").write_text(
+        "\n".join(
+            [
+                "data_file: data.txt",
+                "chunk_size: 2",
+                "output_dir: outputs",
+            ]
+        )
+        + "\n"
+    )
+
+    monkeypatch.chdir(run_dir)
+    config = Trasgu()
+
+    assert config.data_file == str(data_path)
+    assert config.output_dir == str(run_dir / "outputs")
+    assert config.get_number_of_trasgu_matrices() == CHIMERA_TOTAL_RUNS[6]
+
+
+def test_number_of_trasgu_matrices_can_verify_against_zarr(tmp_path, monkeypatch):
+    class FakeMatrices:
+        shape = (5, 3, 3)
+
+    config = make_config(tmp_path, np.ones((3, 3)))
+    monkeypatch.setattr(
+        trasgu.zarr,
+        "open_group",
+        lambda store, mode: {"matrices3": FakeMatrices()},
+    )
+
+    assert config.get_number_of_trasgu_matrices(use_zarr=True) == 5
+
+
+def test_static_number_of_trasgu_matrices_rejects_unknown_sizes(tmp_path):
+    config = make_config(tmp_path, np.ones((3, 3)))
+
+    with pytest.raises(ValueError, match="No static Chimera matrix count"):
+        config.get_number_of_trasgu_matrices()
 
 
 def test_counts_chunks_and_ranges_use_trasgu_matrices(trasgu_config):

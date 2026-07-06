@@ -4,13 +4,12 @@ import sys
 from trasgu import Trasgu
 
 def main():
-    parser = argparse.ArgumentParser(description="Get the total number of chunks for a configuration.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
+    parser = argparse.ArgumentParser(description="Get the total number of chunks for the current run directory.")
 
     args = parser.parse_args()
 
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         print(config.get_number_of_chunks())
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
