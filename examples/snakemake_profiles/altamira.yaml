@@ -4,6 +4,6 @@ latency-wait: 60
 printshellcmds: true
 rerun-incomplete: true
 default-resources:
-  slurm_partition: "meteo_long"
+  slurm_partition: "compute"
   runtime: 10 # minutes
-  slurm_extra: "--exclude=wn054"
+  mem_mb_per_cpu: 1000
