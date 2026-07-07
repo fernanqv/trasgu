@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
-import argparse
-import os
 import sys
 from pathlib import Path
 import fsspec
 import zarr
+from scripts._cli import parser as make_parser
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Download Chimera Zarr structures to a local directory for environments without internet access."
+    parser = make_parser(
+        "Download Chimera Zarr structure arrays to a local directory.",
+        """
+        Examples:
+          trasgu_download_zarr /scratch/user/chimera.zarr
+          trasgu_download_zarr /scratch/user/chimera.zarr --vars 4,5,6,7
+          trasgu_download_zarr /scratch/user/chimera.zarr --vars 6 --url http://example.org/chimera.zarr
+
+        Notes:
+          Use this on a node with internet access before running trasgu on
+          compute nodes without external network access.
+          Point trasgu.yaml to the downloaded store with trasgu_url.
+          Variable size 8 is very large and requires interactive confirmation.
+        """,
     )
     parser.add_argument(
         "destination",
@@ -28,7 +39,7 @@ def main():
         help="Remote URL of the Chimera Zarr store.",
     )
 
-    args = parser.parse_known_args()[0]
+    args = parser.parse_args()
 
     dest_path = Path(args.destination).resolve()
     print(f"Target directory: {dest_path}")

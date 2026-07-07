@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-import argparse
 from importlib import resources
 import os
 from pathlib import Path
 import subprocess
 import sys
+
+from scripts._cli import parser as make_parser
+from scripts._cli import run_directory_error
 
 
 def _workflow_path(name: str) -> Path:
@@ -58,8 +60,23 @@ def _patch_slurm_jobstep_plugin():
 
 def main():
     _patch_slurm_jobstep_plugin()
-    parser = argparse.ArgumentParser(
-        description="Run trasgu chunks with the packaged Snakemake workflow."
+    parser = make_parser(
+        "Run the packaged Snakemake workflow for a trasgu run directory.",
+        """
+        Examples:
+          cd examples/run_config/minimal
+          trasgu_run --dry-run
+          trasgu_run
+          trasgu_run --profile slurm
+          trasgu_run --profile /path/to/snakemake-profile --printshellcmds
+          trasgu_run --unlock
+
+        Notes:
+          Run from a directory containing trasgu.yaml.
+          Local runs use max_workers from trasgu.yaml as the Snakemake --cores value.
+          Use --profile slurm for the packaged SLURM profile.
+          Extra arguments are passed through to Snakemake.
+        """,
     )
     parser.add_argument(
         "--profile",
@@ -111,7 +128,7 @@ def main():
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        print(f"Error: {run_directory_error(e)}", file=sys.stderr)
         sys.exit(1)
 
 

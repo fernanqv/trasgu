@@ -18,8 +18,6 @@ import glob
 import re
 import pickle
 import logging
-import subprocess
-import itertools
 from urllib.parse import urlparse
 
 # Configure logging

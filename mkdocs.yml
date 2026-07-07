@@ -1,0 +1,33 @@
+site_name: trasgu
+site_description: Vine copula fitting over Chimera Zarr structures
+repo_url: https://github.com/geoocean/trasgu
+repo_name: geoocean/trasgu
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - content.code.copy
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Installation: installation.md
+  - Run configuration: run-configuration.md
+  - CLI reference: cli-reference.md
+  - Workflows: workflows.md
+  - SLURM and HPC: slurm-hpc.md
+  - Offline Zarr: offline-zarr.md
+  - Outputs: outputs.md
+  - Examples: examples.md
+  - Troubleshooting: troubleshooting.md
+  - Development: development.md
+  - Help roadmap: help-roadmap.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true

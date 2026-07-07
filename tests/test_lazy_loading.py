@@ -1,6 +1,4 @@
-import pytest
 import numpy as np
-from pathlib import Path
 from trasgu import Trasgu
 
 def test_lazy_loading_does_not_load_on_init(tmp_path):

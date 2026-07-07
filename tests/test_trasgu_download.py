@@ -1,8 +1,4 @@
-import pytest
-import sys
-from pathlib import Path
 import numpy as np
-import zarr
 from scripts import trasgu_download_zarr
 
 def test_trasgu_download_basic(tmp_path, monkeypatch):
