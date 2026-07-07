@@ -18,9 +18,11 @@ def _profile_path(profile: str) -> Path:
 
 
 def _snakemake_executable() -> str:
-    candidate = Path(sys.executable).parent / "snakemake"
-    if candidate.exists():
-        return str(candidate)
+    scripts_dir = Path(sys.executable).parent
+    for executable in ("snakemake", "snakemake.exe"):
+        candidate = scripts_dir / executable
+        if candidate.exists():
+            return str(candidate)
     return "snakemake"
 
 

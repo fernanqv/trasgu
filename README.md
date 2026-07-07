@@ -40,12 +40,39 @@
     trasgu_run --dry-run
     ```
 
+    On Windows PowerShell, activate it with:
+    ```powershell
+    .\.venv\Scripts\Activate.ps1
+    cd examples\run_config\minimal
+    trasgu_run --dry-run
+    ```
+
 For development tools, install the default development group:
 ```bash
 uv sync --frozen
 ```
 
-If `uv` is not installed yet, install it first:
+For SLURM execution on a cluster, install the optional SLURM extra:
+```bash
+uv sync --frozen --extra slurm
+```
+
+If `uv` is not installed yet, install it first.
+
+Windows PowerShell:
+```powershell
+irm https://astral.sh/uv/install.ps1 | iex
+```
+
+Load `uv` in the current PowerShell session:
+```powershell
+$env:Path = "$HOME\.local\bin;$env:Path"
+uv --version
+```
+
+New PowerShell windows should load `uv` automatically after installation. If `uv` is still not found, close and reopen PowerShell.
+
+macOS/Linux:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```

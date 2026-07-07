@@ -1,4 +1,5 @@
 import subprocess
+import tomllib
 import sys
 from pathlib import Path
 
@@ -40,7 +41,7 @@ def test_trasgu_run_uses_max_workers_as_local_cores(tmp_path, monkeypatch):
     trasgu_run.main()
 
     cmd, env = calls[0]
-    assert Path(cmd[0]).name == "snakemake"
+    assert Path(cmd[0]).stem == "snakemake"
     assert cmd[1] == "--snakefile"
     assert Path(cmd[2]).name == "Snakefile"
     assert cmd[3:5] == ["--cores", "3"]
@@ -63,10 +64,10 @@ def test_trasgu_run_resolves_packaged_slurm_profile(tmp_path, monkeypatch):
 
     cmd, _ = calls[0]
     assert "--cores" not in cmd
-    assert Path(cmd[0]).name == "snakemake"
+    assert Path(cmd[0]).stem == "snakemake"
     assert cmd[1] == "--snakefile"
     assert cmd[3] == "--profile"
-    assert cmd[4].endswith("profiles/slurm")
+    assert Path(cmd[4]).parts[-2:] == ("profiles", "slurm")
 
 
 def test_trasgu_run_passes_extra_snakemake_args(tmp_path, monkeypatch):
@@ -86,3 +87,13 @@ def test_trasgu_run_passes_extra_snakemake_args(tmp_path, monkeypatch):
     cmd, _ = calls[0]
     assert "--dry-run" in cmd
     assert "--printshellcmds" in cmd
+
+
+def test_slurm_executor_is_optional_dependency():
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+
+    dependencies = pyproject["project"]["dependencies"]
+    slurm_extra = pyproject["project"]["optional-dependencies"]["slurm"]
+
+    assert "snakemake-executor-plugin-slurm>=0.10" not in dependencies
+    assert slurm_extra == ["snakemake-executor-plugin-slurm>=0.10"]

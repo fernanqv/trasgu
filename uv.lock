@@ -1992,8 +1992,12 @@ dependencies = [
     { name = "pyvinecopulib" },
     { name = "pyyaml" },
     { name = "snakemake" },
-    { name = "snakemake-executor-plugin-slurm" },
     { name = "zarr" },
+]
+
+[package.optional-dependencies]
+slurm = [
+    { name = "snakemake-executor-plugin-slurm" },
 ]
 
 [package.dev-dependencies]
@@ -2010,9 +2014,10 @@ requires-dist = [
     { name = "pyvinecopulib", specifier = ">=0.6.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "snakemake", specifier = ">=8" },
-    { name = "snakemake-executor-plugin-slurm", specifier = ">=0.10" },
+    { name = "snakemake-executor-plugin-slurm", marker = "extra == 'slurm'", specifier = ">=0.10" },
     { name = "zarr", specifier = ">=3.0,<3.2" },
 ]
+provides-extras = ["slurm"]
 
 [package.metadata.requires-dev]
 dev = [
