@@ -3,3 +3,6 @@ dist/
 __pycache__/
 *.egg-info/
 .pytest_cache
+.snakemake/
+.venv/
+.uv/

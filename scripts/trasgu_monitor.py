@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import argparse
 import logging
 import sys
 import time
 from trasgu import Trasgu
+from scripts._cli import parser as make_parser
+from scripts._cli import run_directory_error
 
 def print_status(status):
     print("\n--- Processing Status ---")
@@ -22,14 +23,26 @@ def print_status(status):
     print("-" * 25)
 
 def main():
-    parser = argparse.ArgumentParser(description="Monitor the status of chunk processing.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
-    parser.add_argument("--watch", "-w", type=int, help="Refresh interval in seconds (simulates watch mode).")
+    parser = make_parser(
+        "Show progress for chunk CSV files in the current trasgu run directory.",
+        """
+        Examples:
+          cd examples/run_config/minimal
+          trasgu_monitor
+          trasgu_monitor --watch 30
+
+        Notes:
+          Run from a directory containing trasgu.yaml.
+          Progress is based on fit_chunk_*.csv files found under output_dir.
+          Press Ctrl+C to stop watch mode.
+        """,
+    )
+    parser.add_argument("--watch", "-w", type=int, help="Refresh interval in seconds.")
 
     args = parser.parse_args()
 
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         
         while True:
             status = config.get_chunk_status()
@@ -42,7 +55,7 @@ def main():
     except KeyboardInterrupt:
         print("\nMonitoring stopped.")
     except Exception as e:
-        logging.getLogger("vine_config").error(f"Monitoring failed: {e}")
+        logging.getLogger("vine_config").error(f"Monitoring failed: {run_directory_error(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":

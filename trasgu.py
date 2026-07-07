@@ -18,8 +18,7 @@ import glob
 import re
 import pickle
 import logging
-import subprocess
-import itertools
+from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +29,21 @@ logging.basicConfig(
 logger = logging.getLogger("vine_config")
 logger.debug("Debug message")
 
+CHIMERA_TOTAL_RUNS = {
+    4: 12,
+    5: 480,
+    6: 23040,
+    7: 2580480,
+    8: 660602880,
+}
+
+DEFAULT_CONFIG_NAME = "trasgu.yaml"
+
+
+def _is_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"}
+
 class Trasgu:
     """
     Configuration for vine copula analysis from YAML.
@@ -37,7 +51,7 @@ class Trasgu:
     methods to access Chimera data.
     """
 
-    def __init__(self, yaml_path: str):
+    def __init__(self, yaml_path: str = DEFAULT_CONFIG_NAME):
         """
         Initialize configuration from a YAML file.
 
@@ -46,6 +60,7 @@ class Trasgu:
         """
         logger.debug(f"Initializing Trasgu with YAML file: {yaml_path}")
         self.yaml_path = Path(yaml_path)
+        self.config_dir = self.yaml_path.resolve().parent
 
         # Load YAML
         with open(self.yaml_path, "r") as f:
@@ -55,6 +70,10 @@ class Trasgu:
         for key, value in config.items():
             if not key.startswith("#"):  # Ignore comments
                 setattr(self, key, value)
+
+        for path_attr in ("data_file", "output_dir", "controls_file"):
+            if hasattr(self, path_attr):
+                setattr(self, path_attr, str(self._resolve_run_path(getattr(self, path_attr))))
 
         if hasattr(self, "debug") and self.debug:
             logger.setLevel(logging.DEBUG)
@@ -67,6 +86,9 @@ class Trasgu:
             )
         else:
             # If .trasgu_url is a local path, use local filesystem, else use HTTP
+            if not _is_url(self.trasgu_url):
+                self.trasgu_url = str(self._resolve_run_path(self.trasgu_url))
+
             if os.path.exists(self.trasgu_url):
                 self.trasgu_store = self.trasgu_url
             else:
@@ -74,7 +96,7 @@ class Trasgu:
                 self.trasgu_store = fs.get_mapper(self.trasgu_url)
 
         if not hasattr(self, "output_dir"):
-            self.output_dir = "fit_results"
+            self.output_dir = str(self.config_dir / "fit_results")
 
         if not hasattr(self, "chunk_size"):
             self.chunk_size = 30000
@@ -99,8 +121,14 @@ class Trasgu:
             with open(self.controls_file, "rb") as f:
                 self.controls = pickle.load(f)
 
-        self.data = self._get_data_from_file()
-        self.n_vars = self.data.shape[1]
+        self._data = None
+        self.n_vars = self._get_n_vars_from_file()
+
+    def _resolve_run_path(self, value: str) -> Path:
+        path = Path(value)
+        if path.is_absolute():
+            return path
+        return self.config_dir / path
 
     def __repr__(self) -> str:
         """Human-readable representation of the configuration."""
@@ -186,13 +214,45 @@ class Trasgu:
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
         return np.loadtxt(self.data_file)
 
-    def get_number_of_trasgu_matrices(self) -> int:
+    @property
+    def data(self) -> np.ndarray:
+        if self._data is None:
+            self._data = self._get_data_from_file()
+        return self._data
+
+    def _get_n_vars_from_file(self) -> int:
+        if not os.path.exists(self.data_file):
+            raise FileNotFoundError(f"Data file not found: {self.data_file}")
+        with open(self.data_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    return len(line.split())
+        raise ValueError(f"Data file {self.data_file} contains no data rows.")
+
+    def get_number_of_trasgu_matrices(self, use_zarr: bool = False) -> int:
         """
-        Get the total number of matrices in the Chimera Zarr file.
+        Get the total number of matrices available for the configured data size.
+
+        Chimera is static, so the default path uses the versioned matrix counts
+        for each supported number of variables. Set ``use_zarr=True`` to verify
+        the value against the configured Zarr store.
 
         Returns:
             Total number of matrices.
         """
+        if not use_zarr:
+            try:
+                total_matrices = CHIMERA_TOTAL_RUNS[self.n_vars]
+            except KeyError as exc:
+                known = ", ".join(str(n) for n in sorted(CHIMERA_TOTAL_RUNS))
+                raise ValueError(
+                    f"No static Chimera matrix count known for {self.n_vars} "
+                    f"variables. Known values are for: {known}."
+                ) from exc
+            logger.debug(f"Static total number of matrices: {total_matrices}")
+            return total_matrices
+
         root = zarr.open_group(self.trasgu_store, mode="r")
         matrices = root[f"matrices{self.n_vars}"]
         logger.debug(f"Total number of matrices: {matrices.shape[0]}")
@@ -276,7 +336,10 @@ class Trasgu:
         matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
 
         # Split matrices into sub-chunks for each worker
-        n_workers = min(self.max_workers, len(matrices))    
+        n_workers = min(self.max_workers, len(matrices))
+        if n_workers == 1:
+            return self._fit_vinecop_chunk_internal(matrices, data, first_vine)
+
         indices = np.array_split(np.arange(len(matrices)), n_workers)
         all_results = []
         with ProcessPoolExecutor(max_workers=n_workers) as ex:
@@ -481,120 +544,5 @@ class Trasgu:
             logger.info("Combining results at the end")
             self.combine_chunks()
 
-    def launch_all_chunks_slurm(self, skip_finished: bool = True, max_chunks: Optional[int] = None) -> None:
-        """
-        Launch all missing chunks as a SLURM array job.
-
-        Args:
-            skip_finished: If True, only launches chunks that don't have an output file.
-            max_chunks: Optional limit on the number of chunks to consider.
-        """
-        total_chunks = self.get_number_of_chunks()
-        if max_chunks is not None:
-            total_chunks = min(total_chunks, max_chunks)
-
-        status = self.get_chunk_status()
-        finished_chunks = set(status["finished_chunks"])
-        
-        chunks_to_launch = [i for i in range(total_chunks) if not (skip_finished and i in finished_chunks)]
-
-        if not chunks_to_launch:
-            logger.info("No chunks to launch.")
-            return
-
-        array_str = self._get_slurm_array_string(chunks_to_launch)
-        
-        if not hasattr(self, "slurm_launcher"):
-            raise ValueError("slurm_launcher parameter is required in YAML for SLURM submission")
-        
-        launcher_path = self.slurm_launcher
-        if not os.path.exists(launcher_path):
-            raise FileNotFoundError(f"SLURM launcher script not found: {launcher_path}")
-
-        cmd = [
-            "sbatch",
-            f"--array={array_str}",
-            f"--ntasks={self.max_workers}",
-            "--nodes=1",
-            launcher_path,
-            str(self.yaml_path)
-        ]
-
-        logger.info(f"Launching SLURM array job: {' '.join(cmd)}")
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            logger.info(f"SLURM output: {result.stdout.strip()}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to submit SLURM job: {e.stderr}")
-            raise
-
-    def _get_slurm_array_string(self, indices: list[int]) -> str:
-        """
-        Convert a list of indices into a SLURM array string (e.g., 0-5,7,10-12).
-        """
-        if not indices:
-            return ""
-        
-        indices = sorted(indices)
-        ranges = []
-        for _, g in itertools.groupby(enumerate(indices), lambda x: x[0] - x[1]):
-            group = list(g)
-            start = group[0][1]
-            end = group[-1][1]
-            if start == end:
-                ranges.append(str(start))
-            else:
-                ranges.append(f"{start}-{end}")
-        
-        return ",".join(ranges)
-
 if __name__ == "__main__":
-    config = Trasgu("yaml_examples/geoocean.yaml")
-    config.launch_all_chunks_slurm(skip_finished=True)
-    
-    #config.fit_vinecop_chunk_to_file(chunk_index=1)
-    
-
-
-    # print(config.get_matrix(10))
-    # print(config._load_matrices_from_zarr(10, 100))
-    # # print(config)
-    
-    # config.get_id_chunk_from_matrix_id(15000)º
-
-    # Examples for doing the unittests    
-
-    # Test 1: test has to take less than 1 minute.
-#    config.measure_fitting_time()
-
-
-    # # Test 2: n has to be equal to 660602880
-    # n = config.get_number_of_trasgu_matrices()
-    # print(n)
-
-    # # Test 3:  n_chunks has to be equal to 6606029
-    # n_chunks = config.get_number_of_chunks()
-    # print(n_chunks)
-
-    # # Test 4: chunk_id has to be equal to 60000
-    # chunk_id = config.get_id_chunk_from_matrix_id(matrix_id=6000000)
-    # print(chunk_id)
-
-    # Test 5: Test that the second line of file fit_tests/fit_chunk_0001_00100.csv has this exact string "100,28,-10687.981736". 
-    # Also: Obtain a variable with the time taken to run the command
-#    config.fit_vinecop_chunk_to_file(chunk_index=1)
-
-
-
-    # Test 6: tuple_range has to be (100,199)
-    tuple_range= config.print_chunk_matrices_range(1)
-    
-
-
-    # start_time = time.perf_counter()
-    # config.fit_vinecop_chunk_parallel()
-    # elapsed_time = time.perf_counter() - start_time
-
-    # print(f"Fitting completed in {elapsed_time:.2f} seconds")
-
-    # print(config.get_number_of_chunks(27000))
+    pass

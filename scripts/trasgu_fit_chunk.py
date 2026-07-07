@@ -1,25 +1,34 @@
 #!/usr/bin/env python3
-import argparse
 import sys
-import os
 from trasgu import Trasgu
+from scripts._cli import parser as make_parser
+from scripts._cli import run_directory_error
 
 def main():
-    parser = argparse.ArgumentParser(description="Worker script to fit a single vine copula chunk.")
-    parser.add_argument("config", help="Path to the YAML configuration file.")
-    parser.add_argument("chunk_id", type=int, help="Index of the chunk to process.")
+    parser = make_parser(
+        "Fit one zero-based Chimera matrix chunk and write its CSV output.",
+        """
+        Examples:
+          cd examples/run_config/minimal
+          trasgu_fit_chunk 0
+          trasgu_fit_chunk 23
+
+        Notes:
+          Run from a directory containing trasgu.yaml.
+          This command is used by the Snakemake workflow and is also useful
+          for debugging or rerunning one missing chunk.
+          Output files are written as fit_chunk_NNNN_MMMMM.csv under output_dir.
+        """,
+    )
+    parser.add_argument("chunk_id", type=int, help="Zero-based index of the chunk to process.")
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.config):
-        print(f"Error: Configuration file not found: {args.config}", file=sys.stderr)
-        sys.exit(1)
-
     try:
-        config = Trasgu(args.config)
+        config = Trasgu()
         config.fit_vinecop_chunk_to_file(args.chunk_id)
     except Exception as e:
-        print(f"Error processing chunk {args.chunk_id}: {e}", file=sys.stderr)
+        print(f"Error processing chunk {args.chunk_id}: {run_directory_error(e)}", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":

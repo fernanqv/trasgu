@@ -7,7 +7,7 @@ name = "trasgu"
 version = "0.1.0"
 description = "Vine copula fitting over Chimera Zarr structures"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = { text = "GPL-3.0-only" }
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
@@ -17,18 +17,23 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [
   "numpy>=1.23",
   "PyYAML>=6.0",
-  "zarr>=2.16",
+  "zarr>=3.0,<3.2",
   "fsspec[http]>=2023.6.0",
   "pyvinecopulib>=0.6.0",
+  "snakemake>=8",
 ]
 
 [project.optional-dependencies]
+slurm = [
+  "snakemake-executor-plugin-slurm>=0.10",
+]
+
+[dependency-groups]
 dev = [
   "pytest>=7",
   "ruff>=0.5",
@@ -36,15 +41,22 @@ dev = [
 ]
 
 [project.scripts]
-trasgu_fit_all = "scripts.trasgu_fit_all:main"
-trasgu_submit_slurm = "scripts.trasgu_submit_slurm:main"
 trasgu_combine = "scripts.trasgu_combine:main"
 trasgu_monitor = "scripts.trasgu_monitor:main"
 trasgu_fit_chunk = "scripts.trasgu_fit_chunk:main"
 trasgu_count_chunks = "scripts.trasgu_count_chunks:main"
 trasgu_time_fit = "scripts.trasgu_time_fit:main"
 trasgu_get_matrix = "scripts.trasgu_get_matrix:main"
+trasgu_run = "scripts.trasgu_run:main"
+trasgu_download_zarr = "scripts.trasgu_download_zarr:main"
+
 
 [tool.setuptools]
-packages = ["scripts"]
+packages = ["scripts", "trasgu_workflow"]
 py-modules = ["trasgu"]
+
+[tool.setuptools.package-data]
+trasgu_workflow = ["Snakefile", "profiles/slurm/config.yaml"]
+
+[tool.uv]
+package = true

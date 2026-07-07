@@ -1,0 +1,9 @@
+executor: slurm
+jobs: 100
+latency-wait: 60
+printshellcmds: true
+rerun-incomplete: true
+default-resources:
+  slurm_partition: "compute"
+  runtime: 10 # minutes
+  mem_mb_per_cpu: 1000

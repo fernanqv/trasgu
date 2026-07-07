@@ -1,0 +1,9 @@
+executor: slurm
+jobs: 100
+latency-wait: 60
+printshellcmds: true
+rerun-incomplete: true
+default-resources:
+  slurm_partition: "meteo_long"
+  runtime: 10 # minutes
+  slurm_extra: "--exclude=wn054"
