@@ -7,7 +7,7 @@ If you only want to try `trasgu`, GitHub Codespaces provides a ready-to-use envi
 ## Install
 
 ```bash
-git clone https://github.com/geoocean/trasgu.git
+git clone https://github.com/fernanqv/trasgu.git
 cd trasgu
 uv sync --frozen --no-dev
 ```

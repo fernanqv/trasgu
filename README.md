@@ -7,7 +7,7 @@ It supports local execution through Snakemake and HPC execution through SLURM pr
 ## Installation
 
 ```bash
-git clone https://github.com/geoocean/trasgu.git
+git clone https://github.com/fernanqv/trasgu.git
 cd trasgu
 uv sync --frozen --no-dev
 ```

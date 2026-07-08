@@ -1,7 +1,7 @@
 site_name: trasgu
 site_description: Vine copula fitting over Chimera Zarr structures
-repo_url: https://github.com/geoocean/trasgu
-repo_name: geoocean/trasgu
+repo_url: https://github.com/fernanqv/trasgu.git
+repo_name: fernanqv/trasgu
 
 theme:
   name: material
