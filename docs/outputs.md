@@ -4,7 +4,8 @@
 
 ## Chunk files
 
-Chunk files are written under `output_dir`:
+Chunk files are written under the chunk work directory. By default this is
+`.trasgu_<run>` next to `trasgu.yaml`; it can be customized with `output_dir`.
 
 ```text
 fit_chunk_NNNN_MMMMM.csv
@@ -39,10 +40,10 @@ Use:
 trasgu_combine
 ```
 
-The default combined output is:
+The default combined output is written next to `trasgu.yaml`:
 
 ```text
-fit_results/final_results.csv
+fit_<run>.csv
 ```
 
 The combined file includes a header:

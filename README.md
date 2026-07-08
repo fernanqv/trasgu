@@ -41,7 +41,7 @@ trasgu_monitor
 trasgu_combine
 ```
 
-The run writes chunk CSV files to `fit_results/` and combines them into `fit_results/final_results.csv`.
+The run writes chunk CSV files to `.trasgu_minimal/` and combines them into `fit_minimal.csv` next to `trasgu.yaml`.
 
 You can also run commands without activating the environment:
 
@@ -59,7 +59,6 @@ Minimal example:
 ```yaml
 data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 1000
-output_dir: fit_results
 ```
 
 ## CLI commands

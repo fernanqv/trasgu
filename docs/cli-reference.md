@@ -60,7 +60,7 @@ Combine chunk CSV files into a single output file.
 
 ```bash
 trasgu_combine
-trasgu_combine --output final_results.csv
+trasgu_combine --output custom_results.csv
 trasgu_combine --delete
 ```
 
@@ -68,7 +68,7 @@ Options:
 
 | Option | Description |
 | --- | --- |
-| `-o`, `--output` | Name of the combined CSV written inside `output_dir`. |
+| `-o`, `--output` | Name or path of the combined CSV. Relative paths are resolved from the run directory. |
 | `--delete` | Delete chunk CSV files after a successful merge. |
 
 ## `trasgu_fit_chunk`

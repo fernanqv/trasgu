@@ -8,7 +8,7 @@ Example run directories live under `examples/run_config/`.
 examples/run_config/minimal
 ```
 
-Use this first. It contains a small run configuration and writes to `fit_results`.
+Use this first. It contains a small run configuration. Intermediate chunks are written to `.trasgu_minimal`, and the default combined output is `fit_minimal.csv`.
 
 ```bash
 cd examples/run_config/minimal

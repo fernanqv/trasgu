@@ -109,7 +109,6 @@ def test_default_config_uses_trasgu_yaml_and_run_relative_paths(tmp_path, monkey
             [
                 "data_file: data.txt",
                 "chunk_size: 2",
-                "output_dir: outputs",
             ]
         )
         + "\n"
@@ -119,8 +118,32 @@ def test_default_config_uses_trasgu_yaml_and_run_relative_paths(tmp_path, monkey
     config = Trasgu()
 
     assert config.data_file == str(data_path)
-    assert config.output_dir == str(run_dir / "outputs")
+    assert config.config_name == "run"
+    assert config.output_dir == str(run_dir / ".trasgu_run")
+    assert config.final_results_path == run_dir / "fit_run.csv"
     assert config.get_number_of_trasgu_matrices() == CHIMERA_TOTAL_RUNS[6]
+
+
+def test_output_dir_is_optional_and_run_relative(tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    data_path = run_dir / "data.txt"
+    np.savetxt(data_path, np.ones((3, 6)))
+    config_path = run_dir / "trasgu.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "data_file: data.txt",
+                "chunk_size: 2",
+                "output_dir: outputs",
+            ]
+        )
+        + "\n"
+    )
+
+    config = Trasgu(str(config_path))
+
+    assert config.output_dir == str(run_dir / "outputs")
 
 
 def test_number_of_trasgu_matrices_can_verify_against_zarr(tmp_path, monkeypatch):
@@ -209,7 +232,7 @@ def test_fit_all_chunks_can_limit_and_combine_at_end(trasgu_config):
     )
 
     output_dir = Path(trasgu_config.output_dir)
-    combined_path = output_dir / "final_results.csv"
+    combined_path = trasgu_config.final_results_path
     rows = read_chunk_rows(combined_path)
 
     assert rows[0] == ["vine_id", "n_parameters", "aic"]

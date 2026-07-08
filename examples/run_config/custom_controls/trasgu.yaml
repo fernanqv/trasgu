@@ -1,6 +1,4 @@
 data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 1000
-output_dir: fit_results
 controls_file: ../../controls/controls.pkl
-
 

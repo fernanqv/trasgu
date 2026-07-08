@@ -12,17 +12,22 @@ def main():
         Examples:
           cd examples/run_config/minimal
           trasgu_combine
-          trasgu_combine --output final_results.csv
+          trasgu_combine --output custom_results.csv
           trasgu_combine --delete
 
         Notes:
           Run from a directory containing trasgu.yaml.
           Input files are read from output_dir.
-          The combined CSV is written inside output_dir.
+          The default combined CSV is written next to trasgu.yaml as fit_<run>.csv.
           --delete removes individual fit_chunk_*.csv files after a successful merge.
         """,
     )
-    parser.add_argument("--output", "-o", default="final_results.csv", help="Name of the final combined file (default: final_results.csv).")
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Name or path of the final combined file (default: fit_<run>.csv next to trasgu.yaml).",
+    )
     parser.add_argument("--delete", action="store_true", help="Delete individual chunk files after combination.")
 
     args = parser.parse_args()

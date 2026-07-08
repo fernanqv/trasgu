@@ -61,6 +61,11 @@ class Trasgu:
         logger.debug(f"Initializing Trasgu with YAML file: {yaml_path}")
         self.yaml_path = Path(yaml_path)
         self.config_dir = self.yaml_path.resolve().parent
+        self.config_name = (
+            self.config_dir.name
+            if self.yaml_path.stem == Path(DEFAULT_CONFIG_NAME).stem
+            else self.yaml_path.stem
+        )
 
         # Load YAML
         with open(self.yaml_path, "r") as f:
@@ -96,7 +101,8 @@ class Trasgu:
                 self.trasgu_store = fs.get_mapper(self.trasgu_url)
 
         if not hasattr(self, "output_dir"):
-            self.output_dir = str(self.config_dir / "fit_results")
+            self.output_dir = str(self.config_dir / f".trasgu_{self.config_name}")
+        self.final_results_path = self.config_dir / f"fit_{self.config_name}.csv"
 
         if not hasattr(self, "chunk_size"):
             self.chunk_size = 30000
@@ -129,6 +135,11 @@ class Trasgu:
         if path.is_absolute():
             return path
         return self.config_dir / path
+
+    def _resolve_combined_output_path(self, output_filename: Optional[str | Path]) -> Path:
+        if output_filename is None:
+            return self.final_results_path
+        return self._resolve_run_path(output_filename)
 
     def __repr__(self) -> str:
         """Human-readable representation of the configuration."""
@@ -287,7 +298,7 @@ class Trasgu:
         This function loads a dataset from `data_file`, converts it to pseudo-
         observations, and fits a vine copula for each matrix loaded from the
         corresponding chimera zarr file. Results are written to a CSV in
-        `output_dir`.
+        the configured chunk work directory.
 
         Parameters
         ----------
@@ -467,12 +478,14 @@ class Trasgu:
         logger.info(f"Status: {status['finished_chunks_count']}/{status['total_chunks']} chunks finished ({status['completion_percentage']:.2f}%)")
         return status
 
-    def combine_chunks(self, output_filename: str = "final_results.csv", delete_chunks: bool = False) -> str:
+    def combine_chunks(self, output_filename: Optional[str | Path] = None, delete_chunks: bool = False) -> str:
         """
         Combine all chunk files into a single CSV with a header.
 
         Args:
-            output_filename: Name of the merged output file.
+            output_filename: Optional name or path of the merged output file. Relative
+                paths are resolved from the run directory. If omitted, writes
+                ``fit_<config>.csv`` next to the YAML file.
             delete_chunks: Whether to delete individual chunk files after merging.
 
         Returns:
@@ -482,7 +495,8 @@ class Trasgu:
         if status["missing_chunks"]:
             logger.warning(f"Missing {len(status['missing_chunks'])} chunks. Merging will be incomplete.")
 
-        output_path = os.path.join(self.output_dir, output_filename)
+        output_path = self._resolve_combined_output_path(output_filename)
+        os.makedirs(output_path.parent, exist_ok=True)
         
         # Sort chunks to ensure correct order
         pattern = os.path.join(self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv")
@@ -506,7 +520,7 @@ class Trasgu:
                 os.remove(f)
 
         logger.info(f"Combined file saved to {output_path}")
-        return output_path
+        return str(output_path)
 
     def fit_all_chunks(self, skip_finished: bool = True, max_chunks: Optional[int] = None, combine_at_end: bool = False) -> None:
         """

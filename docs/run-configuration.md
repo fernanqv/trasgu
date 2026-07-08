@@ -9,7 +9,6 @@ Relative paths in `trasgu.yaml` are resolved from the run directory. Absolute pa
 ```yaml
 data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 1000
-output_dir: fit_results
 ```
 
 ## Fields
@@ -18,7 +17,7 @@ output_dir: fit_results
 | --- | --- | --- | --- | --- |
 | `data_file` | Yes | string | none | Input numerical matrix. Rows are observations and columns are variables. |
 | `chunk_size` | No | integer | `30000` | Number of Chimera matrices fitted per chunk. |
-| `output_dir` | No | string | `fit_results` | Directory where chunk CSV files and combined results are written. |
+| `output_dir` | No | string | `.trasgu_<run>` | Advanced option for the chunk work directory. Relative paths are resolved from the run directory. |
 | `max_workers` | No | integer | `1` | Number of local worker processes used inside each chunk. |
 | `controls_file` | No | string | built-in controls | Pickled `pyvinecopulib.FitControlsVinecop` object. |
 | `trasgu_url` | No | string | remote Chimera Zarr | URL or local path to a Chimera Zarr store. |
@@ -41,6 +40,9 @@ output_dir: fit_results
 controls_file: ../../controls/controls.pkl
 trasgu_url: /scratch/user/chimera.zarr
 ```
+
+If `output_dir` is omitted, chunk CSV files are written to `.trasgu_<run>`.
+The combined CSV is written next to `trasgu.yaml` as `fit_<run>.csv` by default.
 
 ## Choosing `chunk_size`
 

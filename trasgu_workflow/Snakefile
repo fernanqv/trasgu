@@ -7,6 +7,7 @@ trasgu = Trasgu()
 chunk_size = int(trasgu.chunk_size)
 total_chunks = trasgu.get_number_of_chunks()
 output_dir = Path(trasgu.output_dir)
+final_results_path = Path(trasgu.final_results_path)
 chunk_ids = [f"{i:04d}" for i in range(total_chunks)]
 
 localrules: combine
@@ -14,7 +15,7 @@ localrules: combine
 
 rule all:
     input:
-        str(output_dir / "final_results.csv")
+        str(final_results_path)
 
 
 rule fit_chunk:
@@ -33,6 +34,6 @@ rule combine:
             chunk_id=chunk_ids,
         )
     output:
-        str(output_dir / "final_results.csv")
+        str(final_results_path)
     shell:
         "trasgu_combine"

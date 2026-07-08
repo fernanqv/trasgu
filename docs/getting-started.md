@@ -33,12 +33,12 @@ trasgu_monitor
 trasgu_combine
 ```
 
-The workflow writes chunk files to `fit_results/` and combines them into `fit_results/final_results.csv`.
+The workflow writes chunk files to `.trasgu_minimal/` and combines them into `fit_minimal.csv` next to `trasgu.yaml`.
 
 ## Check the result
 
 ```bash
-head fit_results/final_results.csv
+head fit_minimal.csv
 ```
 
 Expected columns:
