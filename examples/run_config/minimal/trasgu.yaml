@@ -1,4 +1,4 @@
-data_file: ../../inputs/input4_500_gumbel_high.txt
+data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 1000
 
 

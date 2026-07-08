@@ -12,6 +12,22 @@ cd trasgu
 uv sync --frozen --no-dev
 ```
 
+### GitHub Codespaces
+
+You can try `trasgu` in GitHub Codespaces without installing Python or `uv` locally.
+
+1. Open the repository on GitHub.
+2. Click **Code** -> **Codespaces** -> **Create codespace on main**.
+3. Wait for the Dev Container setup to finish. It installs `uv` and syncs the locked runtime environment automatically.
+4. Run the minimal example:
+
+```bash
+cd examples/run_config/minimal
+trasgu_run --dry-run
+```
+
+The Codespace terminal already uses the project `.venv`, so `trasgu` commands should work without activating the environment manually.
+
 Activate the environment on macOS or Linux:
 
 ```bash

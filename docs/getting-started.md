@@ -2,6 +2,8 @@
 
 This guide runs the bundled minimal example from a fresh checkout.
 
+If you only want to try `trasgu`, GitHub Codespaces provides a ready-to-use environment. See [GitHub Codespaces](codespaces.md).
+
 ## Install
 
 ```bash
