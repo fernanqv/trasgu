@@ -1,6 +1,6 @@
 # trasgu
 
-`trasgu` is a CLI-first toolkit for fitting vine copulas over structured Chimera Zarr matrices. It splits large Chimera matrix collections into chunks, fits each chunk independently, monitors progress, and combines the results into CSV output.
+`trasgu` is a CLI-first toolkit for fitting vine copulas over structured [Chimera](https://research.tudelft.nl/en/datasets/chimera-a-database-with-regular-vine-matrices-on-4-to-8-nodes/) Zarr matrices. It splits large Chimera matrix collections into chunks, fits each chunk independently, monitors progress, and combines the results into CSV output.
 
 It supports local execution through Snakemake and HPC execution through SLURM profiles.
 

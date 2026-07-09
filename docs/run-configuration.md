@@ -17,7 +17,8 @@ chunk_size: 1000
 
 | Field | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `data_file` | Yes | string | none | Input numerical matrix. Rows are observations and columns are variables. |
+| `data_file` | Yes | string | none | Input numerical matrix. Rows are observations and columns are variables. Supported formats are whitespace-delimited text, CSV, TSV, and NumPy `.npy`. |
+| `columns` | No | list of integers | all columns | 1-based column indices to select from `data_file`, in the order to use them. |
 | `chunk_size` | No | integer | `30000` | Number of Chimera matrices fitted per chunk. |
 | `output_dir` | No | string | `.trasgu_<run>` | Advanced option for the chunk work directory. Relative paths are resolved from the run directory. |
 | `max_workers` | No | integer | `1` | Number of local worker processes used inside each chunk. |
@@ -59,6 +60,29 @@ The combined CSV is written next to `trasgu.yaml` as `fit_<run>.csv` by default.
 | 8 | 660,602,880 |
 
 These totals are used by `trasgu_count_chunks` together with `chunk_size`.
+
+## Input data formats
+
+`data_file` must point to a 2D numerical matrix. Rows are observations and columns are variables.
+Trasgu supports at most 8 variables after any column selection.
+
+Supported formats:
+
+- `.txt`, `.dat`, or any other text extension with whitespace-separated values
+- `.csv` with comma-separated values
+- `.tsv` with tab-separated values
+- `.npy` NumPy arrays
+
+Text files may contain comment lines starting with `#`. Header rows are not supported unless they are commented.
+
+Use `columns` to select a subset of variables from wider input files. Column indices are 1-based and preserve the order provided:
+
+```yaml
+data_file: data.csv
+columns: [1, 3, 5, 7]
+```
+
+If `columns` is omitted and the input has more than 8 variables, Trasgu raises an error and asks you to choose a supported subset.
 
 ## Choosing `chunk_size`
 

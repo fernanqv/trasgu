@@ -1,6 +1,6 @@
 # trasgu
 
-`trasgu` fits vine copulas over large collections of structured matrices from the Chimera project. Its goal is to make many matrix fits practical: split the collection into chunks, fit those chunks independently, and run the work locally or in parallel on HPC systems.
+`trasgu` fits vine copulas over large collections of structured matrices from the [Chimera](https://research.tudelft.nl/en/datasets/chimera-a-database-with-regular-vine-matrices-on-4-to-8-nodes/) project. Its goal is to make many matrix fits practical: split the collection into chunks, fit those chunks independently, and run the work locally or in parallel on HPC systems. The resulting CSV files can be monitored and combined.
 
 The package is CLI-first and can run locally through Snakemake or on HPC systems with SLURM.
 

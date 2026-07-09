@@ -7,7 +7,6 @@ import pytest
 import trasgu
 from trasgu import CHIMERA_TOTAL_RUNS, Trasgu
 
-
 VALID_MATRIX_3D = np.array(
     [
         [2, 3, 3],
@@ -78,19 +77,117 @@ def make_config(tmp_path, data):
     data_path = tmp_path / "data.txt"
     np.savetxt(data_path, data)
 
+    return make_config_for_data_file(tmp_path, data_path)
+
+
+def make_config_for_data_file(tmp_path, data_path, columns=None):
+    lines = [
+        f"data_file: {data_path}",
+        "trasgu_url: http://example.invalid/trasgu.zarr",
+        "chunk_size: 2",
+        f"output_dir: {tmp_path / 'fit_results'}",
+    ]
+    if columns is not None:
+        lines.append(f"columns: {columns}")
+
     config_path = tmp_path / "trasgu.yaml"
-    config_path.write_text(
-        "\n".join(
-            [
-                f"data_file: {data_path}",
-                "trasgu_url: http://example.invalid/trasgu.zarr",
-                "chunk_size: 2",
-                f"output_dir: {tmp_path / 'fit_results'}",
-            ]
-        )
-        + "\n"
-    )
+    config_path.write_text("\n".join(lines) + "\n")
     return Trasgu(str(config_path))
+
+
+@pytest.mark.parametrize(
+    ("suffix", "delimiter"),
+    [
+        (".csv", ","),
+        (".tsv", "\t"),
+    ],
+)
+def test_loads_delimited_text_data_files(tmp_path, suffix, delimiter):
+    data = np.array(
+        [
+            [0.1, 0.2, 0.3, 0.4],
+            [1.1, 1.2, 1.3, 1.4],
+            [2.1, 2.2, 2.3, 2.4],
+        ]
+    )
+    data_path = tmp_path / f"data{suffix}"
+    np.savetxt(data_path, data, delimiter=delimiter)
+
+    config = make_config_for_data_file(tmp_path, data_path)
+
+    assert config.n_vars == 4
+    np.testing.assert_allclose(config.data, data)
+
+
+def test_loads_npy_data_files(tmp_path):
+    data = np.array(
+        [
+            [0.1, 0.2, 0.3, 0.4, 0.5],
+            [1.1, 1.2, 1.3, 1.4, 1.5],
+            [2.1, 2.2, 2.3, 2.4, 2.5],
+        ]
+    )
+    data_path = tmp_path / "data.npy"
+    np.save(data_path, data)
+
+    config = make_config_for_data_file(tmp_path, data_path)
+
+    assert config.n_vars == 5
+    np.testing.assert_allclose(config.data, data)
+
+
+def test_rejects_non_matrix_data_files(tmp_path):
+    data_path = tmp_path / "data.npy"
+    np.save(data_path, np.array([0.1, 0.2, 0.3]))
+
+    with pytest.raises(ValueError, match="2D numerical matrix"):
+        make_config_for_data_file(tmp_path, data_path)
+
+
+def test_rejects_data_files_with_more_than_eight_variables(tmp_path):
+    data_path = tmp_path / "data.txt"
+    np.savetxt(data_path, np.ones((3, 9)))
+
+    with pytest.raises(ValueError, match="supports at most 8"):
+        make_config_for_data_file(tmp_path, data_path)
+
+
+def test_selects_configured_columns_with_one_based_indices(tmp_path):
+    data = np.arange(30, dtype=float).reshape(3, 10)
+    data_path = tmp_path / "data.csv"
+    np.savetxt(data_path, data, delimiter=",")
+
+    config = make_config_for_data_file(tmp_path, data_path, columns=[1, 3, 5, 7])
+
+    assert config.n_vars == 4
+    np.testing.assert_array_equal(config.data, data[:, [0, 2, 4, 6]])
+
+
+def test_selects_configured_columns_in_user_order(tmp_path):
+    data = np.arange(30, dtype=float).reshape(3, 10)
+    data_path = tmp_path / "data.npy"
+    np.save(data_path, data)
+
+    config = make_config_for_data_file(tmp_path, data_path, columns=[7, 5, 3, 1])
+
+    assert config.n_vars == 4
+    np.testing.assert_array_equal(config.data, data[:, [6, 4, 2, 0]])
+
+
+def test_rejects_duplicate_columns(tmp_path):
+    data_path = tmp_path / "data.txt"
+    np.savetxt(data_path, np.ones((3, 6)))
+
+    with pytest.raises(ValueError, match="duplicate"):
+        make_config_for_data_file(tmp_path, data_path, columns=[1, 3, 3, 5])
+
+
+def test_rejects_out_of_range_columns(tmp_path):
+    data_path = tmp_path / "data.txt"
+    np.savetxt(data_path, np.ones((3, 6)))
+
+    with pytest.raises(ValueError, match="out of range"):
+        make_config_for_data_file(tmp_path, data_path, columns=[1, 3, 7])
 
 
 def test_number_of_trasgu_matrices_uses_static_chimera_counts(tmp_path):

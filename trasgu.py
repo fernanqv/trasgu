@@ -38,11 +38,82 @@ CHIMERA_TOTAL_RUNS = {
 }
 
 DEFAULT_CONFIG_NAME = "trasgu.yaml"
+MAX_SUPPORTED_VARS = max(CHIMERA_TOTAL_RUNS)
 
 
 def _is_url(value: str) -> bool:
     parsed = urlparse(value)
     return parsed.scheme in {"http", "https"}
+
+
+def _data_file_delimiter(path: str | Path) -> str | None:
+    suffix = Path(path).suffix.lower()
+    if suffix == ".csv":
+        return ","
+    if suffix == ".tsv":
+        return "\t"
+    return None
+
+
+def _ensure_data_matrix(data: np.ndarray, path: str | Path) -> np.ndarray:
+    if data.ndim != 2:
+        raise ValueError(f"Data file {path} must contain a 2D numerical matrix.")
+    if data.shape[0] == 0 or data.shape[1] == 0:
+        raise ValueError(f"Data file {path} contains no data rows.")
+    return data
+
+
+def _normalize_columns(
+    columns: list[int] | tuple[int, ...] | None, n_columns: int
+) -> np.ndarray | None:
+    if columns is None:
+        return None
+    if not isinstance(columns, (list, tuple)):
+        raise ValueError("columns must be a list of 1-based column indices.")
+    if not columns:
+        raise ValueError("columns must contain at least one column index.")
+
+    selected = []
+    for column in columns:
+        if isinstance(column, bool) or not isinstance(column, int):
+            raise ValueError("columns must contain only 1-based integer indices.")
+        if column < 1:
+            raise ValueError("columns must contain 1-based indices greater than 0.")
+        if column > n_columns:
+            raise ValueError(
+                f"Column {column} is out of range for data with {n_columns} columns."
+            )
+        selected.append(column)
+
+    if len(set(selected)) != len(selected):
+        raise ValueError("columns must not contain duplicate indices.")
+
+    return np.array([column - 1 for column in selected], dtype=int)
+
+
+def _ensure_supported_n_vars(n_vars: int, path: str | Path, has_columns: bool) -> int:
+    if n_vars <= MAX_SUPPORTED_VARS:
+        return n_vars
+
+    if not has_columns:
+        raise ValueError(
+            f"Data file {path} has {n_vars} variables, but Trasgu supports at most "
+            f"{MAX_SUPPORTED_VARS}. Set columns in trasgu.yaml to choose a subset."
+        )
+    raise ValueError(
+        f"Trasgu supports at most {MAX_SUPPORTED_VARS} variables; got {n_vars}."
+    )
+
+
+def _select_columns(
+    data: np.ndarray, columns: list[int] | tuple[int, ...] | None, path: str | Path
+) -> np.ndarray:
+    data = _ensure_data_matrix(data, path)
+    selected = _normalize_columns(columns, data.shape[1])
+    if selected is None:
+        return data
+    return data[:, selected]
+
 
 class Trasgu:
     """
@@ -78,7 +149,11 @@ class Trasgu:
 
         for path_attr in ("data_file", "output_dir", "controls_file"):
             if hasattr(self, path_attr):
-                setattr(self, path_attr, str(self._resolve_run_path(getattr(self, path_attr))))
+                setattr(
+                    self,
+                    path_attr,
+                    str(self._resolve_run_path(getattr(self, path_attr))),
+                )
 
         if hasattr(self, "debug") and self.debug:
             logger.setLevel(logging.DEBUG)
@@ -136,7 +211,9 @@ class Trasgu:
             return path
         return self.config_dir / path
 
-    def _resolve_combined_output_path(self, output_filename: Optional[str | Path]) -> Path:
+    def _resolve_combined_output_path(
+        self, output_filename: Optional[str | Path]
+    ) -> Path:
         if output_filename is None:
             return self.final_results_path
         return self._resolve_run_path(output_filename)
@@ -223,7 +300,18 @@ class Trasgu:
         logger.debug(f"Loading data from {self.data_file}")
         if not os.path.exists(self.data_file):
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
-        return np.loadtxt(self.data_file)
+        data_path = Path(self.data_file)
+        if data_path.suffix.lower() == ".npy":
+            data = np.load(data_path)
+        else:
+            data = np.loadtxt(data_path, delimiter=_data_file_delimiter(data_path))
+        data = _select_columns(
+            np.asarray(data), getattr(self, "columns", None), self.data_file
+        )
+        _ensure_supported_n_vars(
+            data.shape[1], self.data_file, hasattr(self, "columns")
+        )
+        return data
 
     @property
     def data(self) -> np.ndarray:
@@ -234,11 +322,28 @@ class Trasgu:
     def _get_n_vars_from_file(self) -> int:
         if not os.path.exists(self.data_file):
             raise FileNotFoundError(f"Data file not found: {self.data_file}")
+        data_path = Path(self.data_file)
+        columns = getattr(self, "columns", None)
+        if data_path.suffix.lower() == ".npy":
+            data = np.load(data_path, mmap_mode="r")
+            data = _ensure_data_matrix(np.asarray(data), self.data_file)
+            selected = _normalize_columns(columns, data.shape[1])
+            n_vars = len(selected) if selected is not None else data.shape[1]
+            return _ensure_supported_n_vars(
+                n_vars, self.data_file, hasattr(self, "columns")
+            )
+
+        delimiter = _data_file_delimiter(data_path)
         with open(self.data_file, "r") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):
-                    return len(line.split())
+                    n_columns = len(line.split(delimiter))
+                    selected = _normalize_columns(columns, n_columns)
+                    n_vars = len(selected) if selected is not None else n_columns
+                    return _ensure_supported_n_vars(
+                        n_vars, self.data_file, hasattr(self, "columns")
+                    )
         raise ValueError(f"Data file {self.data_file} contains no data rows.")
 
     def get_number_of_trasgu_matrices(self, use_zarr: bool = False) -> int:
@@ -329,19 +434,19 @@ class Trasgu:
         logger.info(f"Results saved to {output_path}")
         return results
 
-    def fit_vinecop_chunk_parallel(
-        self, chunk_index: int
-    ) -> np.ndarray:
+    def fit_vinecop_chunk_parallel(self, chunk_index: int) -> np.ndarray:
         """Fit vine copulas for a contiguous chunk in parallel."""
         chunk_size = self.chunk_size
-        logger.info(f"Parallel fitting chunk {chunk_index} with size {chunk_size} using {self.max_workers} workers")
+        logger.info(
+            f"Parallel fitting chunk {chunk_index} with size {chunk_size} using {self.max_workers} workers"
+        )
 
         os.makedirs(self.output_dir, exist_ok=True)
 
         # Transform data to pseudo-observations
         first_vine = chunk_index * chunk_size
         data = pv.to_pseudo_obs(self.data)
-        
+
         # Load all matrices for the chunk
         logger.debug(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
         matrices = self._load_matrices_from_zarr(first_vine, first_vine + chunk_size)
@@ -359,7 +464,11 @@ class Trasgu:
                 logger.debug(f"Submitting chunk {idx_set}")
                 sub_matrices = matrices[idx_set]
                 base_id = first_vine + idx_set[0]
-                futures.append(ex.submit(self._fit_vinecop_chunk_internal, sub_matrices, data, base_id))
+                futures.append(
+                    ex.submit(
+                        self._fit_vinecop_chunk_internal, sub_matrices, data, base_id
+                    )
+                )
 
             for future in as_completed(futures):
                 try:
@@ -372,7 +481,7 @@ class Trasgu:
         # Combine and sort results by vine_id
         final_results = np.vstack(all_results)
         final_results = final_results[final_results[:, 0].argsort()]
-        
+
         return final_results
 
     def print_chunk_matrices_range(
@@ -389,10 +498,9 @@ class Trasgu:
             chunk_size = self.chunk_size
 
         first_vine = chunk_index * chunk_size
-        last_vine = first_vine + chunk_size -1
+        last_vine = first_vine + chunk_size - 1
 
-        return((first_vine,last_vine))
-
+        return (first_vine, last_vine)
 
     def measure_fitting_time(self) -> float:
         """Measure execution time for fitting a chunk of vine copulas.
@@ -406,7 +514,9 @@ class Trasgu:
         chunk_size_short = 100
         first_vine = 0
         data = pv.to_pseudo_obs(self.data)
-        logger.debug(f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}")
+        logger.debug(
+            f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}"
+        )
         matrices = self._load_matrices_from_zarr(
             first_vine, first_vine + chunk_size_short
         )
@@ -456,7 +566,9 @@ class Trasgu:
         finished_chunks = []
 
         # Find all files matching the pattern fit_chunk_NNNN_MMMMM.csv
-        pattern = os.path.join(self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv")
+        pattern = os.path.join(
+            self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv"
+        )
         files = glob.glob(pattern)
 
         for f in files:
@@ -466,19 +578,25 @@ class Trasgu:
 
         finished_chunks.sort()
         missing_chunks = [i for i in range(total_chunks) if i not in finished_chunks]
-        
+
         status = {
             "total_chunks": total_chunks,
             "finished_chunks_count": len(finished_chunks),
             "finished_chunks": finished_chunks,
             "missing_chunks": missing_chunks,
-            "completion_percentage": (len(finished_chunks) / total_chunks * 100) if total_chunks > 0 else 0
+            "completion_percentage": (
+                (len(finished_chunks) / total_chunks * 100) if total_chunks > 0 else 0
+            ),
         }
-        
-        logger.info(f"Status: {status['finished_chunks_count']}/{status['total_chunks']} chunks finished ({status['completion_percentage']:.2f}%)")
+
+        logger.info(
+            f"Status: {status['finished_chunks_count']}/{status['total_chunks']} chunks finished ({status['completion_percentage']:.2f}%)"
+        )
         return status
 
-    def combine_chunks(self, output_filename: Optional[str | Path] = None, delete_chunks: bool = False) -> str:
+    def combine_chunks(
+        self, output_filename: Optional[str | Path] = None, delete_chunks: bool = False
+    ) -> str:
         """
         Combine all chunk files into a single CSV with a header.
 
@@ -493,13 +611,17 @@ class Trasgu:
         """
         status = self.get_chunk_status()
         if status["missing_chunks"]:
-            logger.warning(f"Missing {len(status['missing_chunks'])} chunks. Merging will be incomplete.")
+            logger.warning(
+                f"Missing {len(status['missing_chunks'])} chunks. Merging will be incomplete."
+            )
 
         output_path = self._resolve_combined_output_path(output_filename)
         os.makedirs(output_path.parent, exist_ok=True)
-        
+
         # Sort chunks to ensure correct order
-        pattern = os.path.join(self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv")
+        pattern = os.path.join(
+            self.output_dir, f"fit_chunk_*_{self.chunk_size:05d}.csv"
+        )
         chunk_files = sorted(glob.glob(pattern))
 
         if not chunk_files:
@@ -522,7 +644,12 @@ class Trasgu:
         logger.info(f"Combined file saved to {output_path}")
         return str(output_path)
 
-    def fit_all_chunks(self, skip_finished: bool = True, max_chunks: Optional[int] = None, combine_at_end: bool = False) -> None:
+    def fit_all_chunks(
+        self,
+        skip_finished: bool = True,
+        max_chunks: Optional[int] = None,
+        combine_at_end: bool = False,
+    ) -> None:
         """
         Fit all chunks in the data series.
 
@@ -534,7 +661,7 @@ class Trasgu:
         total_chunks = self.get_number_of_chunks()
         if max_chunks is not None:
             total_chunks = min(total_chunks, max_chunks)
-            
+
         logger.info(f"Starting fitting for {total_chunks} chunks")
 
         status = self.get_chunk_status()
@@ -553,10 +680,11 @@ class Trasgu:
                 continue
 
         logger.info("Finished processing chunks")
-        
+
         if combine_at_end:
             logger.info("Combining results at the end")
             self.combine_chunks()
+
 
 if __name__ == "__main__":
     pass
