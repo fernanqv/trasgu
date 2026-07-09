@@ -1,6 +1,8 @@
 # Getting started
 
-This guide runs the bundled minimal example from a fresh checkout.
+This guide installs `trasgu` from a fresh checkout, inspects the run configuration, and runs the bundled minimal example.
+
+`trasgu` is designed to fit many Chimera matrices efficiently. A run starts with a `trasgu.yaml` file, and the first practical question is how to split the matrix collection into chunks so the work can be fitted independently and, when needed, in parallel.
 
 If you only want to try `trasgu`, GitHub Codespaces provides a ready-to-use environment. See [GitHub Codespaces](codespaces.md).
 
@@ -24,16 +26,36 @@ On macOS or Linux:
 source .venv/bin/activate
 ```
 
-## Run the minimal example
+## Inspect the run configuration
+
+The minimal example is a run directory: it contains the `trasgu.yaml` file used by the CLI commands.
 
 ```bash
 cd examples/run_config/minimal
+cat trasgu.yaml
+```
+
+The file points to the input data and sets the number of Chimera matrices fitted per chunk:
+
+```yaml
+data_file: ../../inputs/input6_500_gumbel_high.txt
+chunk_size: 1000
+```
+
+`chunk_size` controls the job size. Smaller chunks are easier to rerun and monitor; larger chunks reduce scheduling overhead but take longer per job.
+
+## Run the minimal example
+
+```bash
 trasgu_count_chunks
+trasgu_time_fit
 trasgu_run --dry-run
 trasgu_run
 trasgu_monitor
 trasgu_combine
 ```
+
+`trasgu_count_chunks` prints how many chunks this `trasgu.yaml` will create. `trasgu_time_fit` estimates the time for one configured chunk from a small sample before the full run starts.
 
 The workflow writes chunk files to `.trasgu_minimal/` and combines them into `fit_minimal.csv` next to `trasgu.yaml`.
 

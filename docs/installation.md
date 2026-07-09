@@ -1,4 +1,4 @@
-# Installation
+# Environment setup
 
 ## Runtime environment
 

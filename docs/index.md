@@ -1,26 +1,29 @@
 # trasgu
 
-`trasgu` fits vine copulas over structured matrices from the Chimera project. It is designed for large matrix collections: work is split into chunks, each chunk is fitted independently, and the resulting CSV files can be monitored and combined.
+`trasgu` fits vine copulas over large collections of structured matrices from the Chimera project. Its goal is to make many matrix fits practical: split the collection into chunks, fit those chunks independently, and run the work locally or in parallel on HPC systems.
 
 The package is CLI-first and can run locally through Snakemake or on HPC systems with SLURM.
+
+Each run is controlled by a `trasgu.yaml` file. The main planning decision is `chunk_size`, which defines how many Chimera matrices are fitted in each independent chunk.
 
 ## Typical workflow
 
 ```bash
 cd examples/run_config/minimal
 trasgu_count_chunks
+trasgu_time_fit
 trasgu_run --dry-run
 trasgu_run
 trasgu_monitor
 trasgu_combine
 ```
 
-Each run directory contains a `trasgu.yaml` file. Relative paths in that file are resolved from the run directory.
+Use `trasgu_count_chunks` to see how many chunks the current `trasgu.yaml` will create, and `trasgu_time_fit` to estimate how long one configured chunk will take. Relative paths in `trasgu.yaml` are resolved from the run directory.
 
 ## What to read first
 
-- [Getting started](getting-started.md): run the bundled minimal example.
-- [Run configuration](run-configuration.md): understand every `trasgu.yaml` field.
+- [Getting started](getting-started.md): install `trasgu`, inspect `trasgu.yaml`, and run the bundled minimal example.
+- [Run configuration](run-configuration.md): understand every `trasgu.yaml` field and choose a practical `chunk_size`.
 - [CLI reference](cli-reference.md): see commands, options, and examples.
 - [SLURM and HPC](slurm-hpc.md): run with the packaged SLURM profile.
 - [Offline Zarr](offline-zarr.md): prepare clusters without internet access.

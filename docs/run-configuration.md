@@ -4,6 +4,8 @@ Each run is configured by a `trasgu.yaml` file in the directory where the comman
 
 Relative paths in `trasgu.yaml` are resolved from the run directory. Absolute paths are used unchanged.
 
+`trasgu` fits a matrix collection by splitting it into chunks. The configuration decides what data to fit, where intermediate chunk outputs go, and how much work each chunk contains.
+
 ## Minimal example
 
 ```yaml
@@ -44,9 +46,25 @@ trasgu_url: /scratch/user/chimera.zarr
 If `output_dir` is omitted, chunk CSV files are written to `.trasgu_<run>`.
 The combined CSV is written next to `trasgu.yaml` as `fit_<run>.csv` by default.
 
+## Chimera matrix counts
+
+`trasgu` infers the number of variables from the columns in `data_file` and selects the matching Chimera matrix collection.
+
+| Variables | Chimera matrices |
+| --- | ---: |
+| 4 | 12 |
+| 5 | 480 |
+| 6 | 23,040 |
+| 7 | 2,580,480 |
+| 8 | 660,602,880 |
+
+These totals are used by `trasgu_count_chunks` together with `chunk_size`.
+
 ## Choosing `chunk_size`
 
-Smaller chunks are easier to rerun and monitor. Larger chunks reduce scheduling overhead but produce longer individual jobs.
+`chunk_size` is the main lever for planning a run. It controls how many Chimera matrices are fitted in each independent chunk.
+
+Smaller chunks are easier to rerun and monitor. Larger chunks reduce scheduling overhead but produce longer individual jobs. On HPC systems, this also controls the granularity of the jobs submitted by the workflow.
 
 For local testing, start small:
 
@@ -54,11 +72,26 @@ For local testing, start small:
 chunk_size: 1000
 ```
 
-For large HPC runs, increase it after measuring:
+Before running the full workflow, inspect the configured split:
+
+```bash
+trasgu_count_chunks
+```
+
+Then estimate the runtime for one configured chunk:
 
 ```bash
 trasgu_time_fit
 ```
+
+`trasgu_count_chunks` prints how many chunks the current `trasgu.yaml` will produce. `trasgu_time_fit` samples 100 matrices and scales the result to the configured `chunk_size` and `max_workers`.
+
+A practical loop is:
+
+1. Set an initial `chunk_size` in `trasgu.yaml`.
+2. Run `trasgu_count_chunks`.
+3. Run `trasgu_time_fit`.
+4. Adjust `chunk_size` until the number of chunks and estimated time per chunk fit your local or HPC constraints.
 
 ## Choosing `max_workers`
 

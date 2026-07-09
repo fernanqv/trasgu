@@ -15,7 +15,7 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - GitHub Codespaces: codespaces.md
-  - Installation: installation.md
+  - Environment setup: installation.md
   - Run configuration: run-configuration.md
   - CLI reference: cli-reference.md
   - Workflows: workflows.md
