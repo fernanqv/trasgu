@@ -9,7 +9,7 @@ Relative paths in `trasgu.yaml` are resolved from the run directory. Absolute pa
 ## Minimal example
 
 ```yaml
-data_file: ../../inputs/input6_500_gumbel_high.txt
+data_file: input6_500_gumbel_high.txt
 chunk_size: 1000
 ```
 
@@ -38,9 +38,9 @@ These fields accept run-directory-relative paths:
 Example:
 
 ```yaml
-data_file: ../../inputs/input6_500_gumbel_high.txt
+data_file: input6_500_gumbel_high.txt
 output_dir: fit_results
-controls_file: ../../controls/controls.pkl
+controls_file: controls.pkl
 trasgu_url: /scratch/user/chimera.zarr
 ```
 

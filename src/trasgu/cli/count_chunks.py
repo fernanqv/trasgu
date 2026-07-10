@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 import sys
 from trasgu import Trasgu
-from scripts._cli import parser as make_parser
-from scripts._cli import run_directory_error
+from trasgu.cli._shared import parser as make_parser
+from trasgu.cli._shared import run_directory_error
 
 def main():
     parser = make_parser(
-        "Estimate the time needed to fit one full configured chunk.",
+        "Print the number of chunks for the current trasgu run directory.",
         """
         Examples:
-          cd examples/run_config/minimal
-          trasgu_time_fit
+          trasgu_examples minimal ./minimal
+          cd minimal
+          trasgu_count_chunks
 
         Notes:
           Run from a directory containing trasgu.yaml.
-          This samples the first 100 Chimera matrices, then scales the estimate
-          to the configured chunk_size and max_workers.
+          The count is computed from the configured data size and chunk_size.
         """,
     )
 
@@ -23,9 +23,7 @@ def main():
 
     try:
         config = Trasgu()
-
-        config.measure_fitting_time()
-    
+        print(config.get_number_of_chunks())
     except Exception as e:
         print(f"Error: {run_directory_error(e)}", file=sys.stderr)
         sys.exit(1)

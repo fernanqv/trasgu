@@ -20,7 +20,7 @@ From a run directory:
 trasgu_run --profile slurm
 ```
 
-This resolves the packaged profile at `trasgu_workflow/profiles/slurm`.
+This resolves the SLURM profile packaged with `trasgu`.
 
 ## Custom Snakemake profile
 

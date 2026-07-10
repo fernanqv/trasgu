@@ -5,12 +5,12 @@ from pathlib import Path
 import subprocess
 import sys
 
-from scripts._cli import parser as make_parser
-from scripts._cli import run_directory_error
+from trasgu.cli._shared import parser as make_parser
+from trasgu.cli._shared import run_directory_error
 
 
 def _workflow_path(name: str) -> Path:
-    return Path(str(resources.files("trasgu_workflow").joinpath(name)))
+    return Path(str(resources.files("trasgu.workflow").joinpath(name)))
 
 
 def _profile_path(profile: str) -> Path:
@@ -64,7 +64,8 @@ def main():
         "Run the packaged Snakemake workflow for a trasgu run directory.",
         """
         Examples:
-          cd examples/run_config/minimal
+          trasgu_examples minimal ./minimal
+          cd minimal
           trasgu_run --dry-run
           trasgu_run
           trasgu_run --profile slurm

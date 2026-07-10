@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=60"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Vine copula fitting over Chimera Zarr structures"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
-license = { text = "GPL-3.0-only" }
+license = "GPL-3.0-only"
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Intended Audience :: Science/Research",
@@ -32,6 +32,11 @@ dependencies = [
 slurm = [
   "snakemake-executor-plugin-slurm>=0.10",
 ]
+dev = [
+  "pytest>=7",
+  "ruff>=0.5",
+  "black>=24.0",
+]
 
 [dependency-groups]
 dev = [
@@ -41,22 +46,34 @@ dev = [
 ]
 
 [project.scripts]
-trasgu_combine = "scripts.trasgu_combine:main"
-trasgu_monitor = "scripts.trasgu_monitor:main"
-trasgu_fit_chunk = "scripts.trasgu_fit_chunk:main"
-trasgu_count_chunks = "scripts.trasgu_count_chunks:main"
-trasgu_time_fit = "scripts.trasgu_time_fit:main"
-trasgu_get_matrix = "scripts.trasgu_get_matrix:main"
-trasgu_run = "scripts.trasgu_run:main"
-trasgu_download_zarr = "scripts.trasgu_download_zarr:main"
+trasgu_combine = "trasgu.cli.combine:main"
+trasgu_monitor = "trasgu.cli.monitor:main"
+trasgu_fit_chunk = "trasgu.cli.fit_chunk:main"
+trasgu_count_chunks = "trasgu.cli.count_chunks:main"
+trasgu_time_fit = "trasgu.cli.time_fit:main"
+trasgu_get_matrix = "trasgu.cli.get_matrix:main"
+trasgu_run = "trasgu.cli.run:main"
+trasgu_download_zarr = "trasgu.cli.download_zarr:main"
+trasgu_examples = "trasgu.cli.examples:main"
 
 
 [tool.setuptools]
-packages = ["scripts", "trasgu_workflow"]
-py-modules = ["trasgu"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
-trasgu_workflow = ["Snakefile", "profiles/slurm/config.yaml"]
+"trasgu.workflow" = ["Snakefile", "profiles/slurm/config.yaml"]
+"trasgu.examples" = [
+  "*/*",
+]
+
+[tool.setuptools.exclude-package-data]
+"trasgu.examples" = [
+  "__pycache__/*",
+  "*/*.pyc",
+]
 
 [tool.uv]
 package = true

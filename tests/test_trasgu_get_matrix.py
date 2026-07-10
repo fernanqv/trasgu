@@ -2,7 +2,7 @@ import sys
 
 import numpy as np
 
-from scripts import trasgu_get_matrix
+from trasgu.cli import get_matrix as trasgu_get_matrix
 
 
 def _mock_get_matrix(monkeypatch):

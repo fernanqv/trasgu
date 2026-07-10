@@ -1,6 +1,6 @@
 # Getting started
 
-This guide installs `trasgu` from a fresh checkout, inspects the run configuration, and runs the bundled minimal example.
+This guide installs `trasgu` from a fresh checkout, copies a packaged minimal example, inspects the run configuration, and runs it.
 
 `trasgu` is designed to fit many Chimera matrices efficiently. A run starts with a `trasgu.yaml` file, and the first practical question is how to split the matrix collection into chunks so the work can be fitted independently and, when needed, in parallel.
 
@@ -28,17 +28,18 @@ source .venv/bin/activate
 
 ## Inspect the run configuration
 
-The minimal example is a run directory: it contains the `trasgu.yaml` file used by the CLI commands.
+The minimal example is a run directory: it contains the `trasgu.yaml` file used by the CLI commands and the input file it references.
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 cat trasgu.yaml
 ```
 
 The file points to the input data and sets the number of Chimera matrices fitted per chunk:
 
 ```yaml
-data_file: ../../inputs/input6_500_gumbel_high.txt
+data_file: input6_500_gumbel_high.txt
 chunk_size: 1000
 ```
 
@@ -78,5 +79,5 @@ vine_id,n_parameters,aic
 From the run directory, use `uv run` and point it to the project root:
 
 ```bash
-uv run --project ../../.. --frozen trasgu_run --dry-run
+uv run --project .. --frozen trasgu_run --dry-run
 ```

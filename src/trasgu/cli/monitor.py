@@ -3,8 +3,8 @@ import logging
 import sys
 import time
 from trasgu import Trasgu
-from scripts._cli import parser as make_parser
-from scripts._cli import run_directory_error
+from trasgu.cli._shared import parser as make_parser
+from trasgu.cli._shared import run_directory_error
 
 def print_status(status):
     print("\n--- Processing Status ---")
@@ -27,7 +27,8 @@ def main():
         "Show progress for chunk CSV files in the current trasgu run directory.",
         """
         Examples:
-          cd examples/run_config/minimal
+          trasgu_examples minimal ./minimal
+          cd minimal
           trasgu_monitor
           trasgu_monitor --watch 30
 

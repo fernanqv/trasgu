@@ -9,7 +9,8 @@ Each run is controlled by a `trasgu.yaml` file. The main planning decision is `c
 ## Typical workflow
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_count_chunks
 trasgu_time_fit
 trasgu_run --dry-run

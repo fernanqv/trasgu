@@ -9,7 +9,8 @@ Most commands should be run from a directory containing `trasgu.yaml`.
 Run the packaged Snakemake workflow.
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_run --dry-run
 trasgu_run
 trasgu_run --profile slurm
@@ -108,3 +109,17 @@ trasgu_download_zarr /scratch/user --vars 6 --url http://example.org/chimera.zar
 The local store is created or updated as `chimera.zarr` inside the destination directory.
 
 Variable size 8 is very large and requires interactive confirmation.
+
+## `trasgu_examples`
+
+Copy packaged examples to a local working directory.
+
+```bash
+trasgu_examples --list
+trasgu_examples minimal ./minimal
+trasgu_examples custom_controls ./custom-controls
+trasgu_examples profiles ./profiles
+trasgu_examples all ./trasgu_examples
+```
+
+Run examples are self-contained directories. After copying `minimal`, run commands from `./minimal`.

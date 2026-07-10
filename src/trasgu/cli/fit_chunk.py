@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 import sys
 from trasgu import Trasgu
-from scripts._cli import parser as make_parser
-from scripts._cli import run_directory_error
+from trasgu.cli._shared import parser as make_parser
+from trasgu.cli._shared import run_directory_error
 
 def main():
     parser = make_parser(
         "Fit one zero-based Chimera matrix chunk and write its CSV output.",
         """
         Examples:
-          cd examples/run_config/minimal
+          trasgu_examples minimal ./minimal
+          cd minimal
           trasgu_fit_chunk 0
           trasgu_fit_chunk 23
 

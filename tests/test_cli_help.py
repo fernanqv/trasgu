@@ -7,14 +7,15 @@ import pytest
 
 
 CLI_MODULES = [
-    ("trasgu_combine", "scripts.trasgu_combine", True),
-    ("trasgu_monitor", "scripts.trasgu_monitor", True),
-    ("trasgu_fit_chunk", "scripts.trasgu_fit_chunk", True),
-    ("trasgu_count_chunks", "scripts.trasgu_count_chunks", True),
-    ("trasgu_time_fit", "scripts.trasgu_time_fit", True),
-    ("trasgu_get_matrix", "scripts.trasgu_get_matrix", False),
-    ("trasgu_run", "scripts.trasgu_run", True),
-    ("trasgu_download_zarr", "scripts.trasgu_download_zarr", False),
+    ("trasgu_combine", "trasgu.cli.combine", True),
+    ("trasgu_monitor", "trasgu.cli.monitor", True),
+    ("trasgu_fit_chunk", "trasgu.cli.fit_chunk", True),
+    ("trasgu_count_chunks", "trasgu.cli.count_chunks", True),
+    ("trasgu_time_fit", "trasgu.cli.time_fit", True),
+    ("trasgu_get_matrix", "trasgu.cli.get_matrix", False),
+    ("trasgu_run", "trasgu.cli.run", True),
+    ("trasgu_download_zarr", "trasgu.cli.download_zarr", False),
+    ("trasgu_examples", "trasgu.cli.examples", False),
 ]
 
 

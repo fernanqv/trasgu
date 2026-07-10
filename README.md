@@ -22,7 +22,8 @@ You can try `trasgu` in GitHub Codespaces without installing Python or `uv` loca
 4. Run the minimal example:
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_run --dry-run
 ```
 
@@ -49,7 +50,8 @@ uv sync --frozen --extra slurm
 ## Quickstart
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_count_chunks
 trasgu_run --dry-run
 trasgu_run
@@ -62,8 +64,9 @@ The run writes chunk CSV files to `.trasgu_minimal/` and combines them into `fit
 You can also run commands without activating the environment:
 
 ```bash
-cd examples/run_config/minimal
-uv run --project ../../.. --frozen trasgu_run --dry-run
+trasgu_examples minimal ./minimal
+cd minimal
+uv run --project .. --frozen trasgu_run --dry-run
 ```
 
 ## Configuration
@@ -73,7 +76,7 @@ Each run directory contains a `trasgu.yaml` file. Relative paths in `trasgu.yaml
 Minimal example:
 
 ```yaml
-data_file: ../../inputs/input6_500_gumbel_high.txt
+data_file: input6_500_gumbel_high.txt
 chunk_size: 1000
 ```
 
@@ -87,6 +90,7 @@ chunk_size: 1000
 - `trasgu_fit_chunk`: manually fit one chunk.
 - `trasgu_get_matrix`: print one Chimera matrix.
 - `trasgu_download_zarr`: download Chimera Zarr arrays for offline execution.
+- `trasgu_examples`: copy packaged examples to a local working directory.
 
 All commands support `--help`.
 

@@ -1,0 +1,2 @@
+data_file: input6_500_gumbel_high.txt
+chunk_size: 1000
