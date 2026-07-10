@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import fsspec
 import zarr
-from scripts._cli import parser as make_parser
+from trasgu.cli._shared import parser as make_parser
 
 def main():
     parser = make_parser(

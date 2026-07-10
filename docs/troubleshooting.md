@@ -5,7 +5,8 @@
 Most commands must be run from a run directory containing `trasgu.yaml`.
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_run --dry-run
 ```
 
@@ -14,7 +15,7 @@ trasgu_run --dry-run
 Paths in `trasgu.yaml` are resolved from the run directory. Check the path from there:
 
 ```bash
-ls ../../inputs/input6_500_gumbel_high.txt
+ls input6_500_gumbel_high.txt
 ```
 
 ## Zarr access fails

@@ -5,7 +5,7 @@ import numpy as np
 import fsspec
 import zarr
 from trasgu import CHIMERA_TOTAL_RUNS, _is_url
-from scripts._cli import parser as make_parser
+from trasgu.cli._shared import parser as make_parser
 
 DEFAULT_CHIMERA_URL = "http://meteo.unican.es/work/chimera.zarr"
 

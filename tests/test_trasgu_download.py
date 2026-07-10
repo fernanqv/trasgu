@@ -1,5 +1,5 @@
 import numpy as np
-from scripts import trasgu_download_zarr
+from trasgu.cli import download_zarr as trasgu_download_zarr
 
 def test_trasgu_download_basic(tmp_path, monkeypatch):
     dest_dir = tmp_path

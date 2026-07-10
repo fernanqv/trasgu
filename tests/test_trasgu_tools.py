@@ -249,7 +249,7 @@ def test_number_of_trasgu_matrices_can_verify_against_zarr(tmp_path, monkeypatch
 
     config = make_config(tmp_path, np.ones((3, 3)))
     monkeypatch.setattr(
-        trasgu.zarr,
+        trasgu.core.zarr,
         "open_group",
         lambda store, mode: {"matrices3": FakeMatrices()},
     )

@@ -22,7 +22,8 @@ From the GitHub repository page:
 ## Run the minimal example
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_run --dry-run
 ```
 

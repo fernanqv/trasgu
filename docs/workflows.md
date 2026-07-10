@@ -10,7 +10,8 @@
 ## Recommended workflow
 
 ```bash
-cd examples/run_config/minimal
+trasgu_examples minimal ./minimal
+cd minimal
 trasgu_count_chunks
 trasgu_run --dry-run
 trasgu_run

@@ -17,7 +17,7 @@ Variable size 8 is very large, approximately hundreds of GB, and requires intera
 ## Configure a run
 
 ```yaml
-data_file: ../../inputs/input6_500_gumbel_high.txt
+data_file: input6_500_gumbel_high.txt
 chunk_size: 1000
 trasgu_url: /scratch/user/chimera.zarr
 ```

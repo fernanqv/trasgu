@@ -2,15 +2,16 @@
 import logging
 import sys
 from trasgu import Trasgu
-from scripts._cli import parser as make_parser
-from scripts._cli import run_directory_error
+from trasgu.cli._shared import parser as make_parser
+from trasgu.cli._shared import run_directory_error
 
 def main():
     parser = make_parser(
         "Combine individual trasgu chunk CSV files into one results CSV.",
         """
         Examples:
-          cd examples/run_config/minimal
+          trasgu_examples minimal ./minimal
+          cd minimal
           trasgu_combine
           trasgu_combine --output custom_results.csv
           trasgu_combine --delete

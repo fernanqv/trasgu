@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from scripts import trasgu_run
+from trasgu.cli import run as trasgu_run
 
 
 def make_run_dir(tmp_path):
