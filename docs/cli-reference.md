@@ -87,8 +87,13 @@ This command is used internally by Snakemake and is useful for debugging or reru
 Print one Chimera structure matrix.
 
 ```bash
-trasgu_get_matrix 0
+trasgu_get_matrix 6 0
+trasgu_get_matrix 7 42
+trasgu_get_matrix 6 0 --url /scratch/user/chimera.zarr
+trasgu_get_matrix 6 0 --numpy
 ```
+
+The first argument is the number of variables, which selects the `matricesN` Chimera array. The second argument is the zero-based matrix ID. This command does not read `trasgu.yaml`. Use `--numpy` to print only a copyable `np.array(...)` expression.
 
 ## `trasgu_download_zarr`
 

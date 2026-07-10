@@ -2,7 +2,8 @@ import numpy as np
 from scripts import trasgu_download_zarr
 
 def test_trasgu_download_basic(tmp_path, monkeypatch):
-    dest_dir = tmp_path / "chimera.zarr"
+    dest_dir = tmp_path
+    zarr_dir = dest_dir / "chimera.zarr"
 
     # Mock remote group
     class MockArray:
@@ -24,12 +25,14 @@ def test_trasgu_download_basic(tmp_path, monkeypatch):
 
     mock_remote = MockRemoteGroup()
     mock_local = {}
+    local_stores = []
 
     # Mock open_group
     def mock_open_group(store, mode):
         if store == "http://example.invalid/chimera.zarr" or hasattr(store, "fs"):
             return mock_remote
         else:
+            local_stores.append(store)
             # Local group
             class MockLocalGroup:
                 def __contains__(self, name):
@@ -58,3 +61,4 @@ def test_trasgu_download_basic(tmp_path, monkeypatch):
 
     # Verify matrices4 was created in mock local store
     assert "matrices4" in mock_local
+    assert local_stores == [str(zarr_dir)]

@@ -22,10 +22,8 @@ trasgu_url: /scratch/user/chimera.zarr
 
 ## Verify access
 
-From the run directory:
-
 ```bash
-trasgu_get_matrix 0
+trasgu_get_matrix 6 0 --url /scratch/user/chimera.zarr
 ```
 
 If this command fails on a compute node, check filesystem visibility and permissions for the local Zarr path.

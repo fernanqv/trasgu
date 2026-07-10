@@ -12,7 +12,7 @@ CLI_MODULES = [
     ("trasgu_fit_chunk", "scripts.trasgu_fit_chunk", True),
     ("trasgu_count_chunks", "scripts.trasgu_count_chunks", True),
     ("trasgu_time_fit", "scripts.trasgu_time_fit", True),
-    ("trasgu_get_matrix", "scripts.trasgu_get_matrix", True),
+    ("trasgu_get_matrix", "scripts.trasgu_get_matrix", False),
     ("trasgu_run", "scripts.trasgu_run", True),
     ("trasgu_download_zarr", "scripts.trasgu_download_zarr", False),
 ]

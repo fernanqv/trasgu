@@ -30,7 +30,7 @@ trasgu_url: /scratch/user/chimera.zarr
 Then verify:
 
 ```bash
-trasgu_get_matrix 0
+trasgu_get_matrix 6 0 --url /scratch/user/chimera.zarr
 ```
 
 ## Chunks are missing
