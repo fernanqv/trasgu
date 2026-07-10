@@ -24,6 +24,7 @@ Use `trasgu_count_chunks` to see how many chunks the current `trasgu.yaml` will 
 
 - [Getting started](getting-started.md): install `trasgu`, inspect `trasgu.yaml`, and run the bundled minimal example.
 - [Run configuration](run-configuration.md): understand every `trasgu.yaml` field and choose a practical `chunk_size`.
+- [Examples](examples.md): choose a runnable example for CSV input, selected columns, local Chimera data, custom controls, local parallelism, or cluster profiles.
 - [CLI reference](cli-reference.md): see commands, options, and examples.
 - [SLURM and HPC](slurm-hpc.md): run with the packaged SLURM profile.
 - [Offline Zarr](offline-zarr.md): prepare clusters without internet access.

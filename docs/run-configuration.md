@@ -47,6 +47,8 @@ trasgu_url: /scratch/user/chimera.zarr
 If `output_dir` is omitted, chunk CSV files are written to `.trasgu_<run>`.
 The combined CSV is written next to `trasgu.yaml` as `fit_<run>.csv` by default.
 
+For complete `trasgu.yaml` variants, see [Examples](examples.md), including CSV input with selected columns, local Chimera data, custom controls, and larger local runs.
+
 ## Chimera matrix counts
 
 `trasgu` infers the number of variables from the columns in `data_file` and selects the matching Chimera matrix collection.
@@ -83,6 +85,8 @@ columns: [1, 3, 5, 7]
 ```
 
 If `columns` is omitted and the input has more than 8 variables, Trasgu raises an error and asks you to choose a supported subset.
+
+See [CSV input with selected columns](examples.md#csv-input-with-selected-columns) for a runnable example.
 
 ## Choosing `chunk_size`
 

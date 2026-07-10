@@ -1,0 +1,3 @@
+data_file: ../../inputs/input8_100_gauss_low.csv
+columns: [1, 3, 5, 7]
+chunk_size: 1000

@@ -1,4 +1,3 @@
 data_file: ../../inputs/input6_500_gumbel_high.txt
 chunk_size: 1000
-trasgu_url: /scratch/vfernandezquir/chimera.zarr
-
+trasgu_url: /scratch/user/chimera.zarr

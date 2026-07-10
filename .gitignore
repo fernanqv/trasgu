@@ -6,3 +6,5 @@ __pycache__/
 .snakemake/
 .venv/
 .uv/
+examples/run_config/*/.trasgu_*/
+examples/run_config/*/fit_*.csv

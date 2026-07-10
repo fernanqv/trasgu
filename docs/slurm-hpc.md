@@ -2,6 +2,8 @@
 
 `trasgu` can run on SLURM clusters through Snakemake profiles.
 
+See [Snakemake profiles](examples.md#snakemake-profiles) for example profile files and how to use them with a run directory.
+
 ## Install SLURM support
 
 The SLURM executor plugin is optional:

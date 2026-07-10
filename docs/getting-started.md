@@ -59,6 +59,8 @@ trasgu_combine
 
 The workflow writes chunk files to `.trasgu_minimal/` and combines them into `fit_minimal.csv` next to `trasgu.yaml`.
 
+After this works, see [Examples](examples.md) to choose a run directory for CSV input, selected columns, local Chimera data, custom controls, local parallelism, or cluster execution.
+
 ## Check the result
 
 ```bash

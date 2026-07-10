@@ -2,6 +2,8 @@
 
 Some HPC compute nodes cannot access external HTTP resources. In that case, download the Chimera Zarr store on a node with internet access and point `trasgu.yaml` to the local copy.
 
+See [Local Chimera Zarr](examples.md#local-chimera-zarr) for a runnable example configuration.
+
 ## Download arrays
 
 ```bash

@@ -1,5 +1,9 @@
-import pyvinecopulib as pv
 import pickle
+from pathlib import Path
+
+import pyvinecopulib as pv
+
+controls_path = Path(__file__).with_name("controls.pkl")
 
 controls = pv.FitControlsVinecop(
     family_set=pv.one_par,
@@ -8,10 +12,10 @@ controls = pv.FitControlsVinecop(
     parametric_method="mle",
 )
 
-controls
-
-with open("controls.pkl", "wb") as f:
+with open(controls_path, "wb") as f:
     pickle.dump(controls, f)
-# Cargar
-with open("controls.pkl", "rb") as f:
-    controls = pickle.load(f)
+
+with open(controls_path, "rb") as f:
+    loaded_controls = pickle.load(f)
+
+print(loaded_controls)
