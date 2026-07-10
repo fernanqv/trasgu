@@ -10,21 +10,21 @@ def main():
         "Download Chimera Zarr structure arrays to a local directory.",
         """
         Examples:
-          trasgu_download_zarr /scratch/user/chimera.zarr
-          trasgu_download_zarr /scratch/user/chimera.zarr --vars 4,5,6,7
-          trasgu_download_zarr /scratch/user/chimera.zarr --vars 6 --url http://example.org/chimera.zarr
+          trasgu_download_zarr /scratch/user
+          trasgu_download_zarr /scratch/user --vars 4,5,6,7
+          trasgu_download_zarr /scratch/user --vars 6 --url http://example.org/chimera.zarr
 
         Notes:
           Use this on a node with internet access before running trasgu on
           compute nodes without external network access.
-          Point trasgu.yaml to the downloaded store with trasgu_url.
+          Point trasgu.yaml to the downloaded chimera.zarr store with trasgu_url.
           Variable size 8 is very large and requires interactive confirmation.
         """,
     )
     parser.add_argument(
         "destination",
         type=str,
-        help="Path where the chimera.zarr directory should be created/updated.",
+        help="Directory where chimera.zarr should be created/updated.",
     )
     parser.add_argument(
         "--vars",
@@ -41,7 +41,7 @@ def main():
 
     args = parser.parse_args()
 
-    dest_path = Path(args.destination).resolve()
+    dest_path = Path(args.destination).resolve() / "chimera.zarr"
     print(f"Target directory: {dest_path}")
 
     # Parse variables to download
@@ -53,7 +53,7 @@ def main():
 
     # Warn if size 8 is requested
     if 8 in var_sizes:
-        print("WARNING: You have selected variable size 8. This array is ~338 GB and will take a long time to download.")
+        print("WARNING: You have selected variable size 8. This array is ~3 GB and will take a long time to download.")
         response = input("Do you want to continue? [y/N]: ")
         if response.lower() not in ("y", "yes"):
             print("Aborted.")

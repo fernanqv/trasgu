@@ -5,10 +5,10 @@ Some HPC compute nodes cannot access external HTTP resources. In that case, down
 ## Download arrays
 
 ```bash
-trasgu_download_zarr /scratch/user/chimera.zarr --vars 4,5,6,7
+trasgu_download_zarr /scratch/user --vars 4,5,6,7
 ```
 
-By default, `--vars` is `4,5,6,7`.
+This creates or updates `/scratch/user/chimera.zarr`. By default, `--vars` is `4,5,6,7`.
 
 Variable size 8 is very large, approximately hundreds of GB, and requires interactive confirmation.
 

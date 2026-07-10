@@ -95,9 +95,11 @@ trasgu_get_matrix 0
 Download Chimera Zarr arrays for offline or no-network execution.
 
 ```bash
-trasgu_download_zarr /scratch/user/chimera.zarr
-trasgu_download_zarr /scratch/user/chimera.zarr --vars 4,5,6,7
-trasgu_download_zarr /scratch/user/chimera.zarr --vars 6 --url http://example.org/chimera.zarr
+trasgu_download_zarr /scratch/user
+trasgu_download_zarr /scratch/user --vars 4,5,6,7
+trasgu_download_zarr /scratch/user --vars 6 --url http://example.org/chimera.zarr
 ```
+
+The local store is created or updated as `chimera.zarr` inside the destination directory.
 
 Variable size 8 is very large and requires interactive confirmation.
