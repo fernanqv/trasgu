@@ -1,0 +1,4 @@
+data_file: vinecop_samples.txt
+chunk_size: 1000000
+max_workers: 1
+debug: true

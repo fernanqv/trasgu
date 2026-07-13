@@ -1,0 +1,56 @@
+from pathlib import Path
+
+#snakemake --snakefile Snakefile --cores 5
+
+SNAKEFILE_DIR = Path(workflow.basedir)
+SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
+SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate_100clayton_vines.py"
+SIMULATIONS = range(1, 101)
+
+TRASGU_PROFILE = SNAKEFILE_DIR / "profile_unican.yaml"
+TRASGU_ARGS = config.get("trasgu_args", "")
+
+
+def simulation_dir(wildcards):
+    return SIMULATIONS_DIR / f"iteration_{wildcards.iteration}"
+
+
+rule all:
+    input:
+        expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv"),
+            iteration=SIMULATIONS,
+        )
+
+
+rule simulate_inputs:
+    output:
+        expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu.yaml"),
+            iteration=SIMULATIONS,
+        ),
+        expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+            iteration=SIMULATIONS,
+        )
+    shell:
+        "python {SIMULATION_SCRIPT}"
+
+
+rule run_trasgu_simulation:
+    input:
+        config=str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu.yaml"),
+        data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+    output:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv")
+    log:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu_run.log")
+    params:
+        run_dir=simulation_dir,
+        profile=TRASGU_PROFILE,
+        extra_args=TRASGU_ARGS,
+    shell:
+        """
+        cd {params.run_dir}
+        trasgu_run --profile {params.profile} {params.extra_args} > {log} 2>&1
+        """
