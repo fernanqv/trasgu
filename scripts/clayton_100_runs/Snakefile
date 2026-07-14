@@ -3,8 +3,6 @@ from pathlib import Path
 
 import yaml
 
-from trasgu import find_chimera_matrix_ids
-
 #snakemake --snakefile Snakefile --cores 5
 
 SNAKEFILE_DIR = Path(workflow.basedir)
@@ -14,13 +12,8 @@ DISSMANN_SCRIPT = SNAKEFILE_DIR / "fit_dissmann.py"
 COMPARISON_FILE = SNAKEFILE_DIR / "aic_comparison.csv"
 SIMULATIONS = range(1, 101)
 
-with open(SNAKEFILE_DIR / "trasgu.yaml", encoding="utf-8") as config_file:
-    SIMULATION_CONFIG = yaml.safe_load(config_file)
-
 TRASGU_PROFILE = SNAKEFILE_DIR / "slurm_profile.yaml"
 TRASGU_ARGS = config.get("trasgu_args", "")
-CHIMERA_URL = config.get("chimera_url", SIMULATION_CONFIG["trasgu_url"])
-CHIMERA_SEARCH_CHUNK_SIZE = int(config.get("chimera_search_chunk_size", 10_000))
 
 
 def simulation_dir(wildcards):
@@ -110,42 +103,26 @@ rule compare_aic:
     output:
         str(COMPARISON_FILE)
     run:
-        dissmann_results = []
-        for dissmann_path in input.dissmann:
-            with open(dissmann_path, encoding="utf-8") as dissmann_file:
-                dissmann_results.append(yaml.safe_load(dissmann_file))
-
-        dissmann_ids = find_chimera_matrix_ids(
-            [result["matrix"] for result in dissmann_results],
-            url=CHIMERA_URL,
-            chunk_size=CHIMERA_SEARCH_CHUNK_SIZE,
-        )
-
         with open(output[0], "w", encoding="utf-8", newline="") as output_file:
             writer = csv.DictWriter(
                 output_file,
-                fieldnames=[
-                    "vine_id",
-                    "aic_vine",
-                    "vine_id_dissmann",
-                    "aic_dissmann",
-                ],
+                fieldnames=["vine_id", "aic_vine", "aic_dissmann"],
             )
             writer.writeheader()
 
-            for best_fit_path, dissmann_result, dissmann_id in zip(
-                input.best_fits, dissmann_results, dissmann_ids
+            for best_fit_path, dissmann_path in zip(
+                input.best_fits, input.dissmann
             ):
                 with open(best_fit_path, encoding="utf-8", newline="") as best_file:
                     vine_id, _, aic_vine = next(csv.reader(best_file))
+
+                with open(dissmann_path, encoding="utf-8") as dissmann_file:
+                    aic_dissmann = float(yaml.safe_load(dissmann_file)["aic"])
 
                 writer.writerow(
                     {
                         "vine_id": vine_id,
                         "aic_vine": aic_vine,
-                        "vine_id_dissmann": (
-                            dissmann_id if dissmann_id is not None else "not_found"
-                        ),
-                        "aic_dissmann": float(dissmann_result["aic"]),
+                        "aic_dissmann": aic_dissmann,
                     }
                 )
