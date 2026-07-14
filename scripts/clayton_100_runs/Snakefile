@@ -1,4 +1,7 @@
+import csv
 from pathlib import Path
+
+import yaml
 
 #snakemake --snakefile Snakefile --cores 5
 
@@ -6,6 +9,7 @@ SNAKEFILE_DIR = Path(workflow.basedir)
 SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
 SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate_100clayton_vines.py"
 DISSMANN_SCRIPT = SNAKEFILE_DIR / "fit_dissmann.py"
+COMPARISON_FILE = SNAKEFILE_DIR / "aic_comparison.csv"
 SIMULATIONS = range(1, 101)
 
 TRASGU_PROFILE = SNAKEFILE_DIR / "slurm_profile.yaml"
@@ -18,14 +22,7 @@ def simulation_dir(wildcards):
 
 rule all:
     input:
-        expand(
-            str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv"),
-            iteration=SIMULATIONS,
-        ),
-        expand(
-            str(SIMULATIONS_DIR / "iteration_{iteration}" / "dissmann.txt"),
-            iteration=SIMULATIONS,
-        ),
+        str(COMPARISON_FILE)
 
 
 rule simulate_inputs:
@@ -61,16 +58,71 @@ rule run_trasgu_simulation:
         """
 
 
+rule select_best_vine:
+    input:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv")
+    output:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_vine_fit.txt")
+    run:
+        with open(input[0], encoding="utf-8", newline="") as fit_file:
+            rows = csv.DictReader(fit_file)
+            best = min(rows, key=lambda row: float(row["aic"]))
+
+        with open(output[0], "w", encoding="utf-8", newline="") as best_file:
+            writer = csv.writer(best_file)
+            writer.writerow(
+                [best["vine_id"], best["n_parameters"], best["aic"]]
+            )
+
+
 rule run_dissmann_simulation:
     input:
         data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
         script=str(DISSMANN_SCRIPT),
     output:
-        str(SIMULATIONS_DIR / "iteration_{iteration}" / "dissmann.txt")
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "dissmann_{iteration}.yaml")
     params:
         run_dir=simulation_dir,
     shell:
         """
         cd {params.run_dir}
-        python ../../fit_dissmann.py vinecop_samples.txt dissmann.txt
+        python ../../fit_dissmann.py vinecop_samples.txt {output}
         """
+
+
+rule compare_aic:
+    input:
+        best_fits=expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_vine_fit.txt"),
+            iteration=SIMULATIONS,
+        ),
+        dissmann=expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "dissmann_{iteration}.yaml"),
+            iteration=SIMULATIONS,
+        ),
+    output:
+        str(COMPARISON_FILE)
+    run:
+        with open(output[0], "w", encoding="utf-8", newline="") as output_file:
+            writer = csv.DictWriter(
+                output_file,
+                fieldnames=["vine_id", "aic_vine", "aic_dissmann"],
+            )
+            writer.writeheader()
+
+            for best_fit_path, dissmann_path in zip(
+                input.best_fits, input.dissmann
+            ):
+                with open(best_fit_path, encoding="utf-8", newline="") as best_file:
+                    vine_id, _, aic_vine = next(csv.reader(best_file))
+
+                with open(dissmann_path, encoding="utf-8") as dissmann_file:
+                    aic_dissmann = float(yaml.safe_load(dissmann_file)["aic"])
+
+                writer.writerow(
+                    {
+                        "vine_id": vine_id,
+                        "aic_vine": aic_vine,
+                        "aic_dissmann": aic_dissmann,
+                    }
+                )
