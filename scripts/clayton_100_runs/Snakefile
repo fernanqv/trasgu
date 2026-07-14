@@ -5,6 +5,7 @@ from pathlib import Path
 SNAKEFILE_DIR = Path(workflow.basedir)
 SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
 SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate_100clayton_vines.py"
+DISSMANN_SCRIPT = SNAKEFILE_DIR / "fit_dissmann.py"
 SIMULATIONS = range(1, 101)
 
 TRASGU_PROFILE = SNAKEFILE_DIR / "slurm_profile.yaml"
@@ -20,7 +21,11 @@ rule all:
         expand(
             str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv"),
             iteration=SIMULATIONS,
-        )
+        ),
+        expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "dissmann.txt"),
+            iteration=SIMULATIONS,
+        ),
 
 
 rule simulate_inputs:
@@ -53,4 +58,19 @@ rule run_trasgu_simulation:
         """
         cd {params.run_dir}
         trasgu_run --profile {params.profile} {params.extra_args} > {log} 2>&1
+        """
+
+
+rule run_dissmann_simulation:
+    input:
+        data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+        script=str(DISSMANN_SCRIPT),
+    output:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "dissmann.txt")
+    params:
+        run_dir=simulation_dir,
+    shell:
+        """
+        cd {params.run_dir}
+        python ../../fit_dissmann.py vinecop_samples.txt dissmann.txt
         """
