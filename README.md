@@ -126,3 +126,14 @@ uv sync --frozen
 pytest
 ruff check .
 ```
+
+## Cloud validation
+
+The `Cloud validation` GitHub Actions workflow runs the packaged Snakemake
+workflow on a clean GitHub-hosted Linux runner. It configures `trasgu` to use
+all cores reported by the runner, checks that the example completed, and
+uploads the resulting CSV, checksums, environment details, and Snakemake logs
+as a workflow artifact.
+
+The workflow runs after relevant pushes and can also be started manually from
+the Actions tab.

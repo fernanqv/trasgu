@@ -1,0 +1,117 @@
+name: Cloud validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/cloud-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  trasgu-snakemake:
+    name: Trasgu with Snakemake
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Install Trasgu
+        run: uv sync --frozen --no-dev
+
+      - name: Create cloud validation run
+        run: |
+          uv run trasgu_examples csv_columns ./cloud-demo
+          echo "max_workers: $(nproc)" >> cloud-demo/trasgu.yaml
+
+      - name: Record environment
+        working-directory: cloud-demo
+        run: |
+          {
+            date --iso-8601=seconds
+            echo "commit=${GITHUB_SHA}"
+            echo "runner=${RUNNER_NAME}"
+            echo "runner_os=${RUNNER_OS}"
+            uname -a
+            echo "cores=$(nproc)"
+            free -h
+            uv run --project .. python --version
+            uv run --project .. snakemake --version
+            echo
+            echo "trasgu.yaml:"
+            cat trasgu.yaml
+          } | tee environment.txt
+
+      - name: Preview Snakemake DAG
+        working-directory: cloud-demo
+        run: |
+          set -o pipefail
+          uv run --project .. trasgu_run \
+            --dry-run --printshellcmds 2>&1 | tee dry-run.log
+
+      - name: Execute Snakemake workflow
+        working-directory: cloud-demo
+        run: |
+          set -o pipefail
+          SECONDS=0
+          uv run --project .. trasgu_run \
+            --printshellcmds 2>&1 | tee execution.log
+          echo "elapsed_seconds=${SECONDS}" | tee timing.txt
+
+      - name: Validate results
+        working-directory: cloud-demo
+        run: |
+          set -o pipefail
+          uv run --project .. trasgu_monitor 2>&1 | tee status.txt
+
+          test -f fit_cloud-demo.csv
+          output_lines=$(wc -l < fit_cloud-demo.csv)
+          echo "output_lines=${output_lines}" | tee output-size.txt
+          test "${output_lines}" -eq 25
+
+          sha256sum \
+            trasgu.yaml \
+            input8_100_gauss_low.csv \
+            fit_cloud-demo.csv \
+            | tee checksums.sha256
+
+          {
+            echo "## Trasgu cloud validation"
+            echo
+            echo "- Snakemake status: completed"
+            echo "- Available cores: $(nproc)"
+            echo "- Output rows including header: ${output_lines}"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trasgu-cloud-validation-${{ github.sha }}
+          retention-days: 30
+          include-hidden-files: true
+          path: |
+            cloud-demo/environment.txt
+            cloud-demo/dry-run.log
+            cloud-demo/execution.log
+            cloud-demo/timing.txt
+            cloud-demo/status.txt
+            cloud-demo/output-size.txt
+            cloud-demo/checksums.sha256
+            cloud-demo/trasgu.yaml
+            cloud-demo/input8_100_gauss_low.csv
+            cloud-demo/fit_cloud-demo.csv
+            cloud-demo/.trasgu_cloud-demo/
+            cloud-demo/.snakemake/log/
