@@ -7,7 +7,7 @@ SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
 SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate_100clayton_vines.py"
 SIMULATIONS = range(1, 101)
 
-TRASGU_PROFILE = SNAKEFILE_DIR / "profile_unican.yaml"
+TRASGU_PROFILE = SNAKEFILE_DIR / "slurm_profile.yaml"
 TRASGU_ARGS = config.get("trasgu_args", "")
 
 

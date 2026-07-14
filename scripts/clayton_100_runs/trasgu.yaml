@@ -1,4 +1,5 @@
 data_file: vinecop_samples.txt
-chunk_size: 1000000
-max_workers: 1
+chunk_size: 2600000
+max_workers: 4
 debug: true
+trasgu_url: '/gpfs/users/fernandezv/chimera/chimera.zarr'
