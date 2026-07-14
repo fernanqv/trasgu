@@ -4,17 +4,14 @@
 import sys
 from pathlib import Path
 
-import numpy as np
-import pyvinecopulib as pv
 import yaml
-import zarr
 
-from trasgu import CHIMERA_TOTAL_RUNS
+from trasgu import find_chimera_matrix_id
+from trasgu.chimera import DEFAULT_CHIMERA_URL, _normalize_matrix
 from trasgu.cli._shared import parser as make_parser
-from trasgu.cli.get_matrix import DEFAULT_CHIMERA_URL, _open_store
 
 
-def _load_matrix(path: Path) -> np.ndarray:
+def _load_matrix(path: Path):
     with path.open(encoding="utf-8") as stream:
         document = yaml.safe_load(stream)
 
@@ -33,29 +30,7 @@ def _load_matrix(path: Path) -> np.ndarray:
     ):
         raise ValueError("matrix values must be integers")
 
-    matrix = np.asarray(raw_matrix, dtype=np.uint64)
-    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
-        raise ValueError("matrix must be square")
-    if matrix.shape[0] not in CHIMERA_TOTAL_RUNS:
-        supported = ", ".join(map(str, sorted(CHIMERA_TOTAL_RUNS)))
-        raise ValueError(f"matrix dimension must be one of: {supported}")
-
-    try:
-        pv.RVineStructure.from_matrix(np.asfortranarray(matrix))
-    except RuntimeError as error:
-        raise ValueError(f"matrix is not a valid R-vine structure: {error}") from error
-
-    return matrix
-
-
-def _find_matrix_id(matrices, target: np.ndarray, chunk_size: int) -> int | None:
-    for start in range(0, matrices.shape[0], chunk_size):
-        stop = min(start + chunk_size, matrices.shape[0])
-        chunk = np.asarray(matrices[start:stop, :, :])
-        matches = np.flatnonzero(np.all(chunk == target, axis=(1, 2)))
-        if matches.size:
-            return start + int(matches[0])
-    return None
+    return _normalize_matrix(raw_matrix)
 
 
 def main() -> None:
@@ -91,9 +66,9 @@ def main() -> None:
 
     try:
         target = _load_matrix(args.yaml_file)
-        root = zarr.open_group(_open_store(args.url), mode="r")
-        matrices = root[f"matrices{target.shape[0]}"]
-        matrix_id = _find_matrix_id(matrices, target, args.chunk_size)
+        matrix_id = find_chimera_matrix_id(
+            target, url=args.url, chunk_size=args.chunk_size
+        )
         if matrix_id is None:
             raise ValueError("matrix was not found in Chimera")
         print(matrix_id)

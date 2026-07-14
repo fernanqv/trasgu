@@ -110,6 +110,19 @@ trasgu_find_matrix dissmann_1.yaml --chunk-size 50000
 The command prints only the matching `vine_id`. It reads Chimera in blocks;
 `--chunk-size` controls how many matrices are compared in each read.
 
+The same lookup is available from Python. It returns `None` when the matrix is
+not present in Chimera:
+
+```python
+from trasgu import find_chimera_matrix_id
+
+vine_id = find_chimera_matrix_id(
+    matrix,
+    url="/scratch/user/chimera.zarr",
+    chunk_size=50000,
+)
+```
+
 ## `trasgu_download_zarr`
 
 Download Chimera Zarr arrays for offline or no-network execution.
