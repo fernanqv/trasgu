@@ -96,6 +96,20 @@ trasgu_get_matrix 6 0 --numpy
 
 The first argument is the number of variables, which selects the `matricesN` Chimera array. The second argument is the zero-based matrix ID. This command does not read `trasgu.yaml`. Use `--numpy` to print only a copyable `np.array(...)` expression.
 
+## `trasgu_find_matrix`
+
+Find the zero-based Chimera ID of the R-vine matrix stored under the top-level
+`matrix` key in a YAML file:
+
+```bash
+trasgu_find_matrix dissmann_1.yaml
+trasgu_find_matrix dissmann_1.yaml --url /scratch/user/chimera.zarr
+trasgu_find_matrix dissmann_1.yaml --chunk-size 50000
+```
+
+The command prints only the matching `vine_id`. It reads Chimera in blocks;
+`--chunk-size` controls how many matrices are compared in each read.
+
 ## `trasgu_download_zarr`
 
 Download Chimera Zarr arrays for offline or no-network execution.
