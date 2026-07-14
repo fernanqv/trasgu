@@ -9,6 +9,7 @@ TEMPLATE_CONFIG = BASE_DIR / "trasgu.yaml"
 SIMULATIONS_DIR = BASE_DIR / "simulations"
 N_ITERATIONS = 100
 
+# CHIMERA MATRIX 7 VARS: 25200
 matrix_inv= np.array(
     [ [ 7, 7, 3, 4, 4, 7, 6 ],
       [ 0, 3, 7, 3, 3, 3, 4 ],
