@@ -85,13 +85,8 @@ rule fit_reference_models:
             / "iteration_{iteration}"
             / "reference_fits_{iteration}.yaml"
         )
-    params:
-        run_dir=simulation_dir,
     shell:
-        """
-        cd {params.run_dir}
-        python ../../fit_reference_models.py vinecop_samples.txt {output}
-        """
+        "python {input.script} {input.data} {output}"
 
 
 rule compare_aic:
