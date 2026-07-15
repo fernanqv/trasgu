@@ -106,7 +106,13 @@ rule compare_aic:
         with open(output[0], "w", encoding="utf-8", newline="") as output_file:
             writer = csv.DictWriter(
                 output_file,
-                fieldnames=["vine_id", "aic_vine", "aic_dissmann"],
+                fieldnames=[
+                    "vine_id",
+                    "aic_vine",
+                    "aic_dissmann",
+                    "aic_fixed_matrix_clayton",
+                    "aic_ground_truth",
+                ],
             )
             writer.writeheader()
 
@@ -117,12 +123,18 @@ rule compare_aic:
                     vine_id, _, aic_vine = next(csv.reader(best_file))
 
                 with open(dissmann_path, encoding="utf-8") as dissmann_file:
-                    aic_dissmann = float(yaml.safe_load(dissmann_file)["aic"])
+                    dissmann_result = yaml.safe_load(dissmann_file)
 
                 writer.writerow(
                     {
                         "vine_id": vine_id,
                         "aic_vine": aic_vine,
-                        "aic_dissmann": aic_dissmann,
+                        "aic_dissmann": float(dissmann_result["aic"]),
+                        "aic_fixed_matrix_clayton": float(
+                            dissmann_result["aic_fixed_matrix_clayton"]
+                        ),
+                        "aic_ground_truth": float(
+                            dissmann_result["aic_ground_truth"]
+                        ),
                     }
                 )
