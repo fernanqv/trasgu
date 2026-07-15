@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fit an R-vine with Dissmann's algorithm and save its AIC and matrix."""
+"""Fit the reference vine models and save their AIC values."""
 
 from __future__ import annotations
 
@@ -13,14 +13,14 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_INPUT = HERE / "vinecop_samples.txt"
-DEFAULT_OUTPUT = HERE / "dissmann.yaml"
+DEFAULT_OUTPUT = HERE / "reference_fits.yaml"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Fit an R-vine using Dissmann's sequential maximum-spanning-tree "
-            "selection and save its AIC and selected matrix as YAML."
+            "Fit the Dissmann and fixed-structure reference vine models and "
+            "save their AIC values as YAML."
         )
     )
     parser.add_argument("input", nargs="?", type=Path, default=DEFAULT_INPUT)
@@ -107,7 +107,7 @@ def main() -> None:
     print(f"Fitted AIC for Clayton vine copula with 7 variables: {fixed_matrix_clayton_aic}")
 
     result = {
-        "aic": float(model.aic()),
+        "aic_dissmann": float(model.aic()),
         "aic_fixed_matrix_clayton": float(fixed_matrix_clayton_aic),
         "aic_ground_truth": float(ground_truth_aic),
         "matrix": model.matrix.tolist(),
@@ -116,7 +116,7 @@ def main() -> None:
     with args.output.open("w", encoding="utf-8") as output_file:
         yaml.safe_dump(result, output_file, sort_keys=False)
 
-    print(f"Dissmann fit saved to: {args.output}")
+    print(f"Reference fits saved to: {args.output}")
 
 
 
