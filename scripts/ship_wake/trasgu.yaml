@@ -1,0 +1,7 @@
+data_file: unity_inbound.txt
+chunk_size: 4000000
+max_workers: 8
+trasgu_url: '/gpfs/users/fernandezv/chimera/chimera.zarr'
+
+# Estimated time for full chunk (4000000) running with 8 workers: 441.80 minutes
+# 166 chunks

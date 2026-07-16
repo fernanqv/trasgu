@@ -10,24 +10,19 @@ SIMULATIONS_DIR = BASE_DIR / "simulations"
 N_ITERATIONS = 100
 
 # CHIMERA MATRIX 7 VARS: 25200
-matrix_inv= np.array(
-    [ [ 7, 7, 3, 4, 4, 7, 6 ],
-      [ 0, 3, 7, 3, 3, 3, 4 ],
-      [ 0, 0, 4, 7, 2, 4, 3 ],
-      [ 0, 0, 0, 2, 7, 2, 2 ],
-      [ 0, 0, 0, 0, 6, 6, 7 ],
-      [ 0, 0, 0, 0, 0, 5, 5 ],
-      [ 0, 0, 0, 0, 0, 0, 1 ]
-    ]
-)
+matrix_inv= np.array([
+    [5, 5, 4, 2, 4],
+    [0, 4, 5, 4, 2],
+    [0, 0, 2, 5, 1],
+    [0, 0, 0, 1, 5],
+    [0, 0, 0, 0, 3]
+])
 
 matrix = matrix_inv[:, ::-1]
 print(matrix)
 
 bicop = pv.Bicop(pv.clayton, parameters=np.array([[3.1819]])) 
 pair_copulas = [
-    [bicop, bicop, bicop, bicop, bicop, bicop],
-    [bicop, bicop, bicop, bicop, bicop],
     [bicop, bicop, bicop, bicop],
     [bicop, bicop, bicop],
     [bicop, bicop],
