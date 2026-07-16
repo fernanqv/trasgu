@@ -2,4 +2,4 @@ data_file: vinecop_samples.txt
 chunk_size: 480
 max_workers: 1
 debug: true
-trasgu_url: '/gpfs/users/fernandezv/chimera/chimera.zarr'
+trasgu_url: '/nfs/home/gmeteo/valva/chimera.zarr'

@@ -83,6 +83,19 @@ trasgu_fit_chunk 23
 
 This command is used internally by Snakemake and is useful for debugging or rerunning one missing chunk.
 
+## `trasgu_fit_given_matrix`
+
+Fit one matrix and print the complete fitted model as YAML:
+
+```bash
+trasgu_fit_given_matrix 42
+trasgu_fit_given_matrix 42 --json
+```
+
+The ID is zero-based. The command reads `trasgu.yaml` and reports the structure
+matrix, log-likelihood, AIC, BIC, parameter and observation counts, plus every
+fitted bicopula with its family, rotation, parameters, and Kendall's tau.
+
 ## `trasgu_get_matrix`
 
 Print one Chimera structure matrix.

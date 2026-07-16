@@ -17,7 +17,7 @@ chunk_size: 1000
 
 | Field | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `data_file` | Yes | string | none | Input numerical matrix. Rows are observations and columns are variables. Supported formats are whitespace-delimited text, CSV, TSV, and NumPy `.npy`. |
+| `data_file` | Yes | string | none | Input pseudo-observation matrix. Rows are pseudo-observations and columns are variables. Supported formats are whitespace-delimited text, CSV, TSV, and NumPy `.npy`. |
 | `columns` | No | list of integers | all columns | 1-based column indices to select from `data_file`, in the order to use them. |
 | `chunk_size` | No | integer | `30000` | Number of Chimera matrices fitted per chunk. |
 | `output_dir` | No | string | `.trasgu_<run>` | Advanced option for the chunk work directory. Relative paths are resolved from the run directory. |
@@ -65,7 +65,9 @@ These totals are used by `trasgu_count_chunks` together with `chunk_size`.
 
 ## Input data formats
 
-`data_file` must point to a 2D numerical matrix. Rows are observations and columns are variables.
+`data_file` must point to a 2D numerical matrix of pseudo-observations. Rows are
+pseudo-observations and columns are variables. Trasgu uses these values directly
+and does not convert raw observations to pseudo-observations.
 Trasgu supports at most 8 variables after any column selection.
 
 Supported formats:

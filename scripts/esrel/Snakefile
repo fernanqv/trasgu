@@ -9,6 +9,11 @@ SNAKEFILE_DIR = Path(workflow.basedir)
 SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
 SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate_100clayton_vines.py"
 REFERENCE_FITS_SCRIPT = SNAKEFILE_DIR / "fit_reference_models.py"
+MANUAL_FIT_SCRIPT = SNAKEFILE_DIR / "old_way" / "manual_fit.py"
+MANUAL_MATRICES_DIR = SNAKEFILE_DIR / "old_way"
+MANUAL_MATRIX_FILES = [
+    MANUAL_MATRICES_DIR / f"submats_5_T{tree}.pbz2" for tree in range(6, 9)
+]
 COMPARISON_FILE = SNAKEFILE_DIR / "aic_comparison.csv"
 SIMULATIONS = range(1, 101)
 
@@ -54,7 +59,7 @@ rule run_trasgu_simulation:
     shell:
         """
         cd {params.run_dir}
-        trasgu_run --profile {params.profile} {params.extra_args} > {log} 2>&1
+        trasgu_run {params.extra_args} > {log} 2>&1
         """
 
 
@@ -89,6 +94,32 @@ rule fit_reference_models:
         "python {input.script} {input.data} {output}"
 
 
+rule download_manual_matrices:
+    input:
+        script=str(MANUAL_MATRICES_DIR / "download_matrices.sh")
+    output:
+        *map(str, MANUAL_MATRIX_FILES)
+    params:
+        matrix_dir=str(MANUAL_MATRICES_DIR)
+    shell:
+        "cd {params.matrix_dir} && bash {input.script}"
+
+
+rule run_manual_fit:
+    input:
+        data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+        script=str(MANUAL_FIT_SCRIPT),
+        matrices=map(str, MANUAL_MATRIX_FILES),
+    output:
+        str(
+            SIMULATIONS_DIR
+            / "iteration_{iteration}"
+            / "manual_fits_{iteration}.csv"
+        )
+    shell:
+        "python {input.script} {input.data} {output}"
+
+
 rule compare_aic:
     input:
         best_fits=expand(
@@ -103,6 +134,14 @@ rule compare_aic:
             ),
             iteration=SIMULATIONS,
         ),
+        manual_fits=expand(
+            str(
+                SIMULATIONS_DIR
+                / "iteration_{iteration}"
+                / "manual_fits_{iteration}.csv"
+            ),
+            iteration=SIMULATIONS,
+        ),
     output:
         str(COMPARISON_FILE)
     run:
@@ -112,6 +151,8 @@ rule compare_aic:
                 fieldnames=[
                     "vine_id",
                     "aic_vine",
+                    "manual_vine_id",
+                    "manual_aic",
                     "aic_dissmann",
                     "aic_fixed_matrix_clayton",
                     "aic_ground_truth",
@@ -119,8 +160,8 @@ rule compare_aic:
             )
             writer.writeheader()
 
-            for best_fit_path, reference_fits_path in zip(
-                input.best_fits, input.reference_fits
+            for best_fit_path, reference_fits_path, manual_fits_path in zip(
+                input.best_fits, input.reference_fits, input.manual_fits
             ):
                 with open(best_fit_path, encoding="utf-8", newline="") as best_file:
                     vine_id, _, aic_vine = next(csv.reader(best_file))
@@ -128,10 +169,20 @@ rule compare_aic:
                 with open(reference_fits_path, encoding="utf-8") as fits_file:
                     reference_fits = yaml.safe_load(fits_file)
 
+                with open(
+                    manual_fits_path, encoding="utf-8", newline=""
+                ) as manual_file:
+                    manual_best = min(
+                        csv.DictReader(manual_file),
+                        key=lambda row: float(row["manual_aic"]),
+                    )
+
                 writer.writerow(
                     {
                         "vine_id": vine_id,
                         "aic_vine": aic_vine,
+                        "manual_vine_id": manual_best["manual_vine_id"],
+                        "manual_aic": float(manual_best["manual_aic"]),
                         "aic_dissmann": float(reference_fits["aic_dissmann"]),
                         "aic_fixed_matrix_clayton": float(
                             reference_fits["aic_fixed_matrix_clayton"]

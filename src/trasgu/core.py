@@ -63,6 +63,22 @@ def _ensure_data_matrix(data: np.ndarray, path: str | Path) -> np.ndarray:
     return data
 
 
+def _ensure_pseudo_observations(
+    data: np.ndarray, path: str | Path
+) -> np.ndarray:
+    if not np.all(np.isfinite(data)):
+        raise ValueError(
+            f"Data file {path} must contain finite pseudo-observations "
+            "strictly between 0 and 1."
+        )
+    if np.any((data <= 0) | (data >= 1)):
+        raise ValueError(
+            f"Data file {path} must contain pseudo-observations strictly "
+            "between 0 and 1."
+        )
+    return data
+
+
 def _normalize_columns(
     columns: list[int] | tuple[int, ...] | None, n_columns: int
 ) -> np.ndarray | None:
@@ -303,7 +319,7 @@ class Trasgu:
 
         matrix = self.get_matrix(matrix_id)[0]
         cop = pv.Vinecop.from_data(
-            pv.to_pseudo_obs(self.data),
+            self.data,
             matrix=matrix,
             controls=self.controls,
         )
@@ -356,6 +372,7 @@ class Trasgu:
         data = _select_columns(
             np.asarray(data), getattr(self, "columns", None), self.data_file
         )
+        data = _ensure_pseudo_observations(data, self.data_file)
         _ensure_supported_n_vars(
             data.shape[1], self.data_file, hasattr(self, "columns")
         )
@@ -448,10 +465,9 @@ class Trasgu:
     ) -> np.ndarray:
         """Fit vine copulas for a contiguous chunk of vine structures and save to CSV.
 
-        This function loads a dataset from `data_file`, converts it to pseudo-
-        observations, and fits a vine copula for each matrix loaded from the
-        corresponding chimera zarr file. Results are written to a CSV in
-        the configured chunk work directory.
+        This function loads pseudo-observations from `data_file` and fits a vine
+        copula for each matrix loaded from the corresponding chimera zarr file.
+        Results are written to a CSV in the configured chunk work directory.
 
         Parameters
         ----------
@@ -491,9 +507,8 @@ class Trasgu:
 
         os.makedirs(self.output_dir, exist_ok=True)
 
-        # Transform data to pseudo-observations
         first_vine = chunk_index * chunk_size
-        data = pv.to_pseudo_obs(self.data)
+        data = self.data
 
         # Load all matrices for the chunk
         logger.debug(f"Loading vines {first_vine} to {first_vine + chunk_size - 1}")
@@ -561,7 +576,7 @@ class Trasgu:
         """
         chunk_size_short = min(100, self.get_number_of_trasgu_matrices())
         first_vine = 0
-        data = pv.to_pseudo_obs(self.data)
+        data = self.data
         logger.debug(
             f"Loading vines {first_vine} to {first_vine + chunk_size_short - 1}"
         )

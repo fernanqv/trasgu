@@ -52,6 +52,7 @@ dev = [
 trasgu_combine = "trasgu.cli.combine:main"
 trasgu_monitor = "trasgu.cli.monitor:main"
 trasgu_fit_chunk = "trasgu.cli.fit_chunk:main"
+trasgu_fit_given_matrix = "trasgu.cli.fit_given_matrix:main"
 trasgu_count_chunks = "trasgu.cli.count_chunks:main"
 trasgu_time_fit = "trasgu.cli.time_fit:main"
 trasgu_get_matrix = "trasgu.cli.get_matrix:main"

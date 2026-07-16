@@ -22,16 +22,16 @@ VALID_MATRIX_3D = np.array(
 def trasgu_config(tmp_path, monkeypatch):
     data = np.array(
         [
-            [0.10, 1.20, 2.10],
-            [0.20, 1.10, 2.20],
-            [0.30, 1.40, 2.00],
-            [0.40, 1.30, 2.30],
-            [0.50, 1.60, 2.40],
-            [0.60, 1.50, 2.60],
-            [0.70, 1.80, 2.50],
-            [0.80, 1.70, 2.80],
-            [0.90, 2.00, 2.70],
-            [1.00, 1.90, 3.00],
+            [0.10, 0.20, 0.21],
+            [0.20, 0.10, 0.22],
+            [0.30, 0.40, 0.20],
+            [0.40, 0.30, 0.23],
+            [0.50, 0.60, 0.24],
+            [0.60, 0.50, 0.26],
+            [0.70, 0.80, 0.25],
+            [0.80, 0.70, 0.28],
+            [0.90, 0.95, 0.27],
+            [0.95, 0.90, 0.30],
         ],
         dtype=float,
     )
@@ -107,8 +107,8 @@ def test_loads_delimited_text_data_files(tmp_path, suffix, delimiter):
     data = np.array(
         [
             [0.1, 0.2, 0.3, 0.4],
-            [1.1, 1.2, 1.3, 1.4],
-            [2.1, 2.2, 2.3, 2.4],
+            [0.2, 0.3, 0.4, 0.5],
+            [0.3, 0.4, 0.5, 0.6],
         ]
     )
     data_path = tmp_path / f"data{suffix}"
@@ -124,8 +124,8 @@ def test_loads_npy_data_files(tmp_path):
     data = np.array(
         [
             [0.1, 0.2, 0.3, 0.4, 0.5],
-            [1.1, 1.2, 1.3, 1.4, 1.5],
-            [2.1, 2.2, 2.3, 2.4, 2.5],
+            [0.2, 0.3, 0.4, 0.5, 0.6],
+            [0.3, 0.4, 0.5, 0.6, 0.7],
         ]
     )
     data_path = tmp_path / "data.npy"
@@ -135,6 +135,21 @@ def test_loads_npy_data_files(tmp_path):
 
     assert config.n_vars == 5
     np.testing.assert_allclose(config.data, data)
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    [0.0, 1.0, -0.1, 1.1, np.nan, np.inf],
+)
+def test_rejects_values_that_are_not_pseudo_observations(
+    tmp_path, invalid_value
+):
+    data = np.full((3, 4), 0.5)
+    data[1, 2] = invalid_value
+    config = make_config(tmp_path, data)
+
+    with pytest.raises(ValueError, match="pseudo-observations.*between 0 and 1"):
+        config.data
 
 
 def test_rejects_non_matrix_data_files(tmp_path):
@@ -154,7 +169,7 @@ def test_rejects_data_files_with_more_than_eight_variables(tmp_path):
 
 
 def test_selects_configured_columns_with_one_based_indices(tmp_path):
-    data = np.arange(30, dtype=float).reshape(3, 10)
+    data = (np.arange(30, dtype=float).reshape(3, 10) + 1) / 31
     data_path = tmp_path / "data.csv"
     np.savetxt(data_path, data, delimiter=",")
 
@@ -165,7 +180,7 @@ def test_selects_configured_columns_with_one_based_indices(tmp_path):
 
 
 def test_selects_configured_columns_in_user_order(tmp_path):
-    data = np.arange(30, dtype=float).reshape(3, 10)
+    data = (np.arange(30, dtype=float).reshape(3, 10) + 1) / 31
     data_path = tmp_path / "data.npy"
     np.save(data_path, data)
 
@@ -324,6 +339,23 @@ def test_fit_given_matrix_returns_detailed_serializable_fit(trasgu_config):
         "tree", "edge", "family", "rotation", "parameters", "tau"
     }
     yaml.safe_dump(result)
+
+
+def test_chunk_fit_uses_input_pseudo_observations_unchanged(
+    trasgu_config, monkeypatch
+):
+    received = None
+
+    def capture_data(matrices, data, base_vine_id):
+        nonlocal received
+        received = data
+        return np.empty((len(matrices), 3))
+
+    monkeypatch.setattr(trasgu_config, "_fit_vinecop_chunk_internal", capture_data)
+
+    trasgu_config.fit_vinecop_chunk_parallel(0)
+
+    assert received is trasgu_config.data
 
 
 def test_fit_given_matrix_rejects_out_of_range_id(trasgu_config):
