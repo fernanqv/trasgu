@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 import trasgu
 from trasgu import CHIMERA_TOTAL_RUNS, Trasgu
@@ -277,6 +278,21 @@ def test_measure_fitting_time_returns_minutes(trasgu_config):
     assert elapsed_minutes >= 0
 
 
+def test_measure_fitting_time_uses_available_matrix_count(trasgu_config, monkeypatch):
+    loaded_ranges = []
+    monkeypatch.setattr(trasgu_config, "get_number_of_trasgu_matrices", lambda: 5)
+    original_loader = trasgu_config._load_matrices_from_zarr
+    monkeypatch.setattr(
+        trasgu_config,
+        "_load_matrices_from_zarr",
+        lambda start, end: (loaded_ranges.append((start, end)), original_loader(start, end))[1],
+    )
+
+    trasgu_config.measure_fitting_time()
+
+    assert loaded_ranges == [(0, 5)]
+
+
 def test_fit_vinecop_chunk_to_file_writes_expected_rows(trasgu_config):
     results = trasgu_config.fit_vinecop_chunk_to_file(chunk_index=1)
 
@@ -292,6 +308,27 @@ def test_fit_vinecop_chunk_to_file_writes_expected_rows(trasgu_config):
     assert len(rows) == 2
     assert [int(rows[0][0]), int(rows[1][0])] == [2, 3]
     assert all(len(row) == 3 for row in rows)
+
+
+def test_fit_given_matrix_returns_detailed_serializable_fit(trasgu_config):
+    result = trasgu_config.fit_given_matrix(3)
+
+    assert result["matrix_id"] == 3
+    assert result["n_variables"] == 3
+    assert result["n_observations"] == len(trasgu_config.data)
+    assert isinstance(result["aic"], float)
+    assert isinstance(result["bic"], float)
+    assert isinstance(result["loglik"], float)
+    assert len(result["bicopulas"]) == 3
+    assert set(result["bicopulas"][0]) == {
+        "tree", "edge", "family", "rotation", "parameters", "tau"
+    }
+    yaml.safe_dump(result)
+
+
+def test_fit_given_matrix_rejects_out_of_range_id(trasgu_config):
+    with pytest.raises(ValueError, match="between 0 and 4"):
+        trasgu_config.fit_given_matrix(5)
 
 
 def test_chunk_status_reports_finished_and_missing_chunks(trasgu_config):

@@ -290,6 +290,54 @@ class Trasgu:
         logger.debug(f"Loaded matrix {matrix_id}")
         return matrix
 
+    def fit_given_matrix(self, matrix_id: int) -> Dict[str, Any]:
+        """Fit one Chimera matrix and return detailed, serializable fit data."""
+        total_matrices = self.get_number_of_trasgu_matrices()
+        if isinstance(matrix_id, bool) or not isinstance(matrix_id, int):
+            raise TypeError("matrix_id must be an integer")
+        if matrix_id < 0 or matrix_id >= total_matrices:
+            raise ValueError(
+                f"matrix_id must be between 0 and {total_matrices - 1} "
+                f"for {self.n_vars} variables"
+            )
+
+        matrix = self.get_matrix(matrix_id)[0]
+        cop = pv.Vinecop.from_data(
+            pv.to_pseudo_obs(self.data),
+            matrix=matrix,
+            controls=self.controls,
+        )
+
+        pair_copulas = []
+        for tree in range(cop.trunc_lvl):
+            for edge in range(cop.dim - tree - 1):
+                bicop = cop.get_pair_copula(tree, edge)
+                family = str(bicop.family)
+                if "." in family:
+                    family = family.rsplit(".", 1)[-1]
+                pair_copulas.append(
+                    {
+                        "tree": tree + 1,
+                        "edge": edge + 1,
+                        "family": family,
+                        "rotation": int(bicop.rotation),
+                        "parameters": np.asarray(bicop.parameters).tolist(),
+                        "tau": float(bicop.tau),
+                    }
+                )
+
+        return {
+            "matrix_id": matrix_id,
+            "n_variables": int(cop.dim),
+            "n_observations": int(cop.nobs),
+            "n_parameters": float(cop.npars),
+            "loglik": float(cop.loglik()),
+            "aic": float(cop.aic()),
+            "bic": float(cop.bic()),
+            "matrix": np.asarray(cop.matrix).tolist(),
+            "bicopulas": pair_copulas,
+        }
+
     def _get_data_from_file(self) -> np.ndarray:
         """
         Load data from the input file specified in config.
@@ -511,7 +559,7 @@ class Trasgu:
         Returns:
            Time in minutes to fit a full chunk as per config.
         """
-        chunk_size_short = 100
+        chunk_size_short = min(100, self.get_number_of_trasgu_matrices())
         first_vine = 0
         data = pv.to_pseudo_obs(self.data)
         logger.debug(
@@ -525,7 +573,8 @@ class Trasgu:
         self._fit_vinecop_chunk_internal(matrices, data, base_vine_id=0)
         elapsed_time = time.perf_counter() - start_time
 
-        time_per_chunk = elapsed_time / chunk_size_short * self.chunk_size / 60
+        measured_matrices = len(matrices)
+        time_per_chunk = elapsed_time / measured_matrices * self.chunk_size / 60
         if self.max_workers > 1:
             time_per_chunk = time_per_chunk / self.max_workers
         logger.info(
