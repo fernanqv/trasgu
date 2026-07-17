@@ -1,0 +1,143 @@
+import csv
+from pathlib import Path
+
+import yaml
+
+#snakemake --snakefile Snakefile --cores 5
+
+SNAKEFILE_DIR = Path(workflow.basedir)
+SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
+SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate_vines.py"
+REFERENCE_FITS_SCRIPT = SNAKEFILE_DIR / "fit_reference_models.py"
+COMPARISON_FILE = SNAKEFILE_DIR / "aic_comparison.csv"
+SIMULATIONS = range(1, 101)
+
+TRASGU_PROFILE = SNAKEFILE_DIR / "slurm_profile.yaml"
+TRASGU_ARGS = config.get("trasgu_args", "")
+
+
+def simulation_dir(wildcards):
+    return SIMULATIONS_DIR / f"iteration_{wildcards.iteration}"
+
+
+rule all:
+    input:
+        str(COMPARISON_FILE)
+
+
+rule simulate_inputs:
+    output:
+        expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu.yaml"),
+            iteration=SIMULATIONS,
+        ),
+        expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+            iteration=SIMULATIONS,
+        )
+    shell:
+        "python {SIMULATION_SCRIPT}"
+
+
+rule run_trasgu_simulation:
+    input:
+        config=str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu.yaml"),
+        data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+    output:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv")
+    log:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu_run.log")
+    params:
+        run_dir=simulation_dir,
+        profile=TRASGU_PROFILE,
+        extra_args=TRASGU_ARGS,
+    shell:
+        """
+        cd {params.run_dir}
+        trasgu_run --profile {params.profile} {params.extra_args}
+        """
+
+
+rule select_best_vine:
+    input:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv")
+    output:
+        str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_vine_fit.txt")
+    run:
+        with open(input[0], encoding="utf-8", newline="") as fit_file:
+            rows = csv.DictReader(fit_file)
+            best = min(rows, key=lambda row: float(row["aic"]))
+
+        with open(output[0], "w", encoding="utf-8", newline="") as best_file:
+            writer = csv.writer(best_file)
+            writer.writerow(
+                [best["vine_id"], best["n_parameters"], best["aic"]]
+            )
+
+
+rule fit_reference_models:
+    input:
+        data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+        script=str(REFERENCE_FITS_SCRIPT),
+    output:
+        str(
+            SIMULATIONS_DIR
+            / "iteration_{iteration}"
+            / "reference_fits_{iteration}.yaml"
+        )
+    shell:
+        "python {input.script} {input.data} {output}"
+
+
+rule compare_aic:
+    input:
+        best_fits=expand(
+            str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_vine_fit.txt"),
+            iteration=SIMULATIONS,
+        ),
+        reference_fits=expand(
+            str(
+                SIMULATIONS_DIR
+                / "iteration_{iteration}"
+                / "reference_fits_{iteration}.yaml"
+            ),
+            iteration=SIMULATIONS,
+        ),
+    output:
+        str(COMPARISON_FILE)
+    run:
+        with open(output[0], "w", encoding="utf-8", newline="") as output_file:
+            writer = csv.DictWriter(
+                output_file,
+                fieldnames=[
+                    "vine_id",
+                    "aic_vine",
+                    "aic_dissmann",
+                    "aic_fixed_matrix_clayton",
+                    "aic_ground_truth",
+                ],
+            )
+            writer.writeheader()
+
+            for best_fit_path, reference_fits_path in zip(
+                input.best_fits, input.reference_fits
+            ):
+                with open(best_fit_path, encoding="utf-8", newline="") as best_file:
+                    vine_id, _, aic_vine = next(csv.reader(best_file))
+
+                with open(reference_fits_path, encoding="utf-8") as fits_file:
+                    reference_fits = yaml.safe_load(fits_file)
+
+                writer.writerow(
+                    {
+                        "vine_id": vine_id,
+                        "aic_vine": aic_vine,
+                        "aic_dissmann": float(reference_fits["aic_dissmann"]),
+                        "aic_fixed_matrix_clayton": float(
+                            reference_fits["aic_fixed_matrix_clayton"]
+                        ),
+                        "aic_ground_truth": float(
+                            reference_fits["aic_ground_truth"]
+                        ),
+                    }
+                )

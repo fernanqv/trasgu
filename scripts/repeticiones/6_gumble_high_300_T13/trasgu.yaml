@@ -1,0 +1,3 @@
+data_file: vinecop_samples.txt
+chunk_size: 23040
+max_workers: 4
