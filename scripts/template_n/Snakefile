@@ -8,6 +8,7 @@ import yaml
 SNAKEFILE_DIR = Path(workflow.basedir)
 SIMULATIONS_DIR = SNAKEFILE_DIR / "simulations"
 SIMULATION_SCRIPT = SNAKEFILE_DIR / "simulate.py"
+SELECT_BEST_SCRIPT = SNAKEFILE_DIR / "select_best_vine.py"
 SIMULATION_CONFIG = SNAKEFILE_DIR / "trasgu.yaml"
 COMPARISON_FILE = SNAKEFILE_DIR / "aic_comparison.csv"
 N_ITERATIONS = int(config.get("iterations", 100))
@@ -72,19 +73,22 @@ rule run_trasgu_simulation:
 
 rule select_best_vine:
     input:
-        str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv")
+        fit=str(SIMULATIONS_DIR / "iteration_{iteration}" / "fit_iteration_{iteration}.csv"),
+        data=str(SIMULATIONS_DIR / "iteration_{iteration}" / "vinecop_samples.txt"),
+        config=str(SIMULATIONS_DIR / "iteration_{iteration}" / "trasgu.yaml"),
+        script=str(SELECT_BEST_SCRIPT),
     output:
-        str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_vine_fit.txt")
-    run:
-        with open(input[0], encoding="utf-8", newline="") as fit_file:
-            rows = csv.DictReader(fit_file)
-            best = min(rows, key=lambda row: float(row["aic"]))
-
-        with open(output[0], "w", encoding="utf-8", newline="") as best_file:
-            writer = csv.writer(best_file)
-            writer.writerow(
-                [best["vine_id"], best["n_parameters"], best["aic"]]
-            )
+        summary=str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_vine_fit.txt"),
+        detailed=str(SIMULATIONS_DIR / "iteration_{iteration}" / "best_fit_detailed.txt"),
+    shell:
+        """
+        python {input.script} \
+            --fit {input.fit} \
+            --data {input.data} \
+            --config {input.config} \
+            --output {output.summary} \
+            --detailed-output {output.detailed}
+        """
 
 
 rule compare_aic:
