@@ -1,0 +1,9 @@
+executor: slurm
+jobs: 100
+latency-wait: 60
+printshellcmds: true
+rerun-incomplete: true
+default-resources:
+  slurm_partition: "wncompute_meteo"
+  runtime: 1200 # minutes
+  mem_mb_per_cpu: 1000
