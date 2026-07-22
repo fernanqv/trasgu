@@ -83,6 +83,33 @@ trasgu_fit_chunk 23
 
 This command is used internally by Snakemake and is useful for debugging or rerunning one missing chunk.
 
+## `trasgu_best_fits`
+
+Refit and print the lowest-AIC structures from the default combined results file:
+
+```bash
+trasgu_best_fits
+trasgu_best_fits 3
+trasgu_best_fits 5 --format yaml
+trasgu_best_fits 5 --format json --output best_fits.json
+```
+
+Run the command from the directory containing `trasgu.yaml`. It always reads
+the default `fit_<run>.csv` produced by `trasgu_combine`. The count defaults to
+one; if it exceeds the number of rows, every available fit is returned. Ties
+are ordered by vine ID.
+
+The same operation is available from Python:
+
+```python
+from trasgu import Trasgu
+
+best_fits = Trasgu("/path/to/run/trasgu.yaml").get_best_fits(3)
+```
+
+This returns a list of dictionaries containing the rank, source AIC, fitted
+statistics, matrix, pyvinecopulib model summary, and bicopula details.
+
 ## `trasgu_fit_given_matrix`
 
 Fit one matrix and print the complete fitted model as YAML:

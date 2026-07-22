@@ -15,6 +15,8 @@ import os.path
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import glob
+import csv
+import heapq
 import re
 import pickle
 import logging
@@ -63,9 +65,7 @@ def _ensure_data_matrix(data: np.ndarray, path: str | Path) -> np.ndarray:
     return data
 
 
-def _ensure_pseudo_observations(
-    data: np.ndarray, path: str | Path
-) -> np.ndarray:
+def _ensure_pseudo_observations(data: np.ndarray, path: str | Path) -> np.ndarray:
     if not np.all(np.isfinite(data)):
         raise ValueError(
             f"Data file {path} must contain finite pseudo-observations "
@@ -351,8 +351,82 @@ class Trasgu:
             "aic": float(cop.aic()),
             "bic": float(cop.bic()),
             "matrix": np.asarray(cop.matrix).tolist(),
+            "model_summary": str(cop),
             "bicopulas": pair_copulas,
         }
+
+    def get_best_fits(self, count: int = 1) -> list[Dict[str, Any]]:
+        """Return detailed fits for the lowest-AIC rows in the combined CSV.
+
+        The combined results file is always the default ``fit_<run>.csv`` next
+        to ``trasgu.yaml``. Rows are ordered by ascending AIC and then by vine
+        ID, making ties deterministic. Only ``count`` candidates are retained
+        while reading, so this also works with very large result files.
+        """
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise TypeError("count must be an integer")
+        if count < 1:
+            raise ValueError("count must be greater than 0")
+        if not self.final_results_path.exists():
+            raise FileNotFoundError(
+                f"Combined results file not found: {self.final_results_path}"
+            )
+
+        # The heap root is the worst retained row: largest AIC, then largest ID.
+        selected: list[tuple[float, int, int, float, int]] = []
+        with self.final_results_path.open(encoding="utf-8", newline="") as stream:
+            rows = csv.DictReader(stream)
+            required = {"vine_id", "n_parameters", "aic"}
+            missing = required - set(rows.fieldnames or [])
+            if missing:
+                raise ValueError(
+                    f"{self.final_results_path} is missing columns: "
+                    f"{', '.join(sorted(missing))}"
+                )
+
+            for line_number, row in enumerate(rows, start=2):
+                try:
+                    vine_id = int(row["vine_id"])
+                    n_parameters = float(row["n_parameters"])
+                    source_aic = float(row["aic"])
+                except (TypeError, ValueError) as error:
+                    raise ValueError(
+                        f"{self.final_results_path} has invalid values on line "
+                        f"{line_number}"
+                    ) from error
+                if not np.isfinite(source_aic):
+                    raise ValueError(
+                        f"{self.final_results_path} has a non-finite AIC on line "
+                        f"{line_number}"
+                    )
+
+                item = (-source_aic, -vine_id, vine_id, source_aic, n_parameters)
+                if len(selected) < count:
+                    heapq.heappush(selected, item)
+                elif item > selected[0]:
+                    heapq.heapreplace(selected, item)
+
+        if not selected:
+            raise ValueError(f"{self.final_results_path} contains no fit rows")
+
+        candidates = sorted(
+            ((item[3], item[2], item[4]) for item in selected),
+            key=lambda item: (item[0], item[1]),
+        )
+        results = []
+        for rank, (source_aic, vine_id, source_n_parameters) in enumerate(
+            candidates, start=1
+        ):
+            fit = self.fit_given_matrix(vine_id)
+            fit.update(
+                {
+                    "rank": rank,
+                    "source_aic": source_aic,
+                    "source_n_parameters": source_n_parameters,
+                }
+            )
+            results.append(fit)
+        return results
 
     def _get_data_from_file(self) -> np.ndarray:
         """
@@ -574,7 +648,7 @@ class Trasgu:
         Returns:
            Time in minutes to fit a full chunk as per config.
         """
-        chunk_size_short = min(100, self.get_number_of_trasgu_matrices())
+        chunk_size_short = min(1000, self.get_number_of_trasgu_matrices())
         first_vine = 0
         data = self.data
         logger.debug(

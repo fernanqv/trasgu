@@ -141,9 +141,7 @@ def test_loads_npy_data_files(tmp_path):
     "invalid_value",
     [0.0, 1.0, -0.1, 1.1, np.nan, np.inf],
 )
-def test_rejects_values_that_are_not_pseudo_observations(
-    tmp_path, invalid_value
-):
+def test_rejects_values_that_are_not_pseudo_observations(tmp_path, invalid_value):
     data = np.full((3, 4), 0.5)
     data[1, 2] = invalid_value
     config = make_config(tmp_path, data)
@@ -300,7 +298,10 @@ def test_measure_fitting_time_uses_available_matrix_count(trasgu_config, monkeyp
     monkeypatch.setattr(
         trasgu_config,
         "_load_matrices_from_zarr",
-        lambda start, end: (loaded_ranges.append((start, end)), original_loader(start, end))[1],
+        lambda start, end: (
+            loaded_ranges.append((start, end)),
+            original_loader(start, end),
+        )[1],
     )
 
     trasgu_config.measure_fitting_time()
@@ -336,14 +337,17 @@ def test_fit_given_matrix_returns_detailed_serializable_fit(trasgu_config):
     assert isinstance(result["loglik"], float)
     assert len(result["bicopulas"]) == 3
     assert set(result["bicopulas"][0]) == {
-        "tree", "edge", "family", "rotation", "parameters", "tau"
+        "tree",
+        "edge",
+        "family",
+        "rotation",
+        "parameters",
+        "tau",
     }
     yaml.safe_dump(result)
 
 
-def test_chunk_fit_uses_input_pseudo_observations_unchanged(
-    trasgu_config, monkeypatch
-):
+def test_chunk_fit_uses_input_pseudo_observations_unchanged(trasgu_config, monkeypatch):
     received = None
 
     def capture_data(matrices, data, base_vine_id):
@@ -361,6 +365,57 @@ def test_chunk_fit_uses_input_pseudo_observations_unchanged(
 def test_fit_given_matrix_rejects_out_of_range_id(trasgu_config):
     with pytest.raises(ValueError, match="between 0 and 4"):
         trasgu_config.fit_given_matrix(5)
+
+
+def test_get_best_fits_returns_lowest_aic_in_order(trasgu_config, monkeypatch):
+    rows = [
+        (3, 3, -10.0),
+        (1, 3, -30.0),
+        (4, 3, 2.0),
+        (2, 3, -30.0),
+        (0, 3, -20.0),
+    ]
+    with trasgu_config.final_results_path.open("w", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["vine_id", "n_parameters", "aic"])
+        writer.writerows(rows)
+
+    fitted = []
+
+    def fake_fit(matrix_id):
+        fitted.append(matrix_id)
+        return {"matrix_id": matrix_id, "aic": float(matrix_id)}
+
+    monkeypatch.setattr(trasgu_config, "fit_given_matrix", fake_fit)
+
+    results = trasgu_config.get_best_fits(3)
+
+    assert fitted == [1, 2, 0]
+    assert [result["source_aic"] for result in results] == [-30.0, -30.0, -20.0]
+    assert [result["rank"] for result in results] == [1, 2, 3]
+
+
+def test_get_best_fits_returns_all_rows_when_count_is_larger(
+    trasgu_config, monkeypatch
+):
+    trasgu_config.final_results_path.write_text(
+        "vine_id,n_parameters,aic\n3,3,-1.0\n1,3,-2.0\n"
+    )
+    monkeypatch.setattr(
+        trasgu_config,
+        "fit_given_matrix",
+        lambda matrix_id: {"matrix_id": matrix_id},
+    )
+
+    results = trasgu_config.get_best_fits(10)
+
+    assert [result["matrix_id"] for result in results] == [1, 3]
+
+
+@pytest.mark.parametrize("count", [0, -1])
+def test_get_best_fits_rejects_non_positive_count(trasgu_config, count):
+    with pytest.raises(ValueError, match="greater than 0"):
+        trasgu_config.get_best_fits(count)
 
 
 def test_chunk_status_reports_finished_and_missing_chunks(trasgu_config):

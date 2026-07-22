@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 CLI_MODULES = [
     ("trasgu_combine", "trasgu.cli.combine", True),
     ("trasgu_monitor", "trasgu.cli.monitor", True),
@@ -18,11 +17,14 @@ CLI_MODULES = [
     ("trasgu_run", "trasgu.cli.run", True),
     ("trasgu_download_zarr", "trasgu.cli.download_zarr", False),
     ("trasgu_examples", "trasgu.cli.examples", False),
+    ("trasgu_best_fits", "trasgu.cli.best_fits", True),
 ]
 
 
 @pytest.mark.parametrize(("command", "module_name", "uses_run_dir"), CLI_MODULES)
-def test_cli_help_exits_successfully(command, module_name, uses_run_dir, monkeypatch, capsys):
+def test_cli_help_exits_successfully(
+    command, module_name, uses_run_dir, monkeypatch, capsys
+):
     module = importlib.import_module(module_name)
     monkeypatch.setattr(sys, "argv", [command, "--help"])
 
@@ -42,6 +44,8 @@ def test_documented_cli_modules_match_project_scripts():
     scripts = pyproject["project"]["scripts"]
 
     expected = {command: module for command, module, _ in CLI_MODULES}
-    actual = {command: target.split(":", maxsplit=1)[0] for command, target in scripts.items()}
+    actual = {
+        command: target.split(":", maxsplit=1)[0] for command, target in scripts.items()
+    }
 
     assert actual == expected

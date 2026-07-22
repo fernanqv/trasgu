@@ -87,6 +87,7 @@ chunk_size: 1000
 - `trasgu_time_fit`: estimate time per configured chunk.
 - `trasgu_monitor`: show chunk completion status.
 - `trasgu_combine`: combine chunk CSV files.
+- `trasgu_best_fits`: print or export the lowest-AIC fitted models.
 - `trasgu_fit_chunk`: manually fit one chunk.
 - `trasgu_get_matrix`: print one Chimera matrix.
 - `trasgu_download_zarr`: download Chimera Zarr arrays for offline execution.

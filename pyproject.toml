@@ -60,6 +60,7 @@ trasgu_find_matrix = "trasgu.cli.find_matrix:main"
 trasgu_run = "trasgu.cli.run:main"
 trasgu_download_zarr = "trasgu.cli.download_zarr:main"
 trasgu_examples = "trasgu.cli.examples:main"
+trasgu_best_fits = "trasgu.cli.best_fits:main"
 
 
 [tool.setuptools]
