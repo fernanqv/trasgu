@@ -4,26 +4,29 @@ import matplotlib.pyplot as plt
 
 
 data = pd.read_csv("aic_comparison.csv")
-data["diferencia_vine"] = np.abs(
+data["vine_difference"] = np.abs(
     data["aic_vine"] - data["aic_fixed_matrix_clayton"]
 )
-data["diferencia_dissmann"] = np.abs(
+data["dissmann_difference"] = np.abs(
     data["aic_dissmann"] - data["aic_fixed_matrix_clayton"]
 )
 
 differences = {
-    "Vine - matriz fija Clayton": data["diferencia_vine"],
-    "Dissmann - matriz fija Clayton": data["diferencia_dissmann"],
+    "Vine - fixed Clayton matrix": data["vine_difference"],
+    "Dissmann - fixed Clayton matrix": data["dissmann_difference"],
 }
 
-for modelo, columna in [
-    ("Vine", "diferencia_vine"),
-    ("Dissmann", "diferencia_dissmann"),
+for model, column in [
+    ("Vine", "vine_difference"),
+    ("Dissmann", "dissmann_difference"),
 ]:
-    mayores = data.nlargest(2, columna).copy()
-    mayores.insert(0, "simulacion", mayores.index + 1)
-    print(f"\nDos diferencias absolutas más altas de {modelo} frente al fixed:")
-    print(mayores[["simulacion", "vine_id", columna]].to_string(index=False))
+    largest = data.nlargest(2, column).copy()
+    largest.insert(0, "simulation", largest.index + 1)
+    print(
+        f"\nTwo largest absolute differences for {model} "
+        "versus the fixed Clayton matrix:"
+    )
+    print(largest[["simulation", "vine_id", column]].to_string(index=False))
 
 
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -45,8 +48,8 @@ for (label, difference), marker in zip(differences.items(), markers):
     )
 
 ax.axvline(0, color="gray", linestyle="--", linewidth=1)
-ax.set_xlabel("Diferencia de AIC")
-ax.set_ylabel("Rango acumulado de simulaciones")
+ax.set_xlabel("AIC difference")
+ax.set_ylabel("Cumulative rank of simulations")
 ax.grid(alpha=0.3)
 ax.legend()
 fig.tight_layout()
